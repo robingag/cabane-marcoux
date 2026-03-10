@@ -10,7 +10,7 @@ body{font-family:Arial;background:#0a0a1a;color:#fff;user-select:none}
 .hd-right{display:flex;align-items:center;gap:12px}
 .mn-btn{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;opacity:.85}
 .mn-btn:active{opacity:1}
-.mn-panel{background:#071428;border-bottom:2px solid #1a3a6a;padding:20px 16px;text-align:center;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease}
+.mn-panel{background:#071428;border-bottom:2px solid #1a3a6a;padding:0 16px;text-align:center;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
 .mn-panel.open{max-height:320px;padding:20px 16px}
 .mn-title{font-size:11px;color:#0ff;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
 .mn-qr{display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-bottom:10px}
@@ -55,7 +55,7 @@ function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=wi
 function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
 function ss(t,cl){document.getElementById("st").textContent=t;document.getElementById("dt").className="dt "+cl}
 function tg(){if(c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle")}
-function tgMenu(){var p=document.getElementById("mnp");var open=p.classList.toggle("open");if(open&&!p.dataset.loaded){var url="https://robingag.github.io/cabane-marcoux/?id="+id;document.getElementById("qrurl").textContent=url;document.getElementById("qrimg").src="https://chart.googleapis.com/chart?chs=160x160&cht=qr&choe=UTF-8&chl="+encodeURIComponent(url);p.dataset.loaded="1"}}
+function tgMenu(){var p=document.getElementById("mnp");var open=p.classList.toggle("open");if(open&&!p.dataset.loaded){var url="https://robingag.github.io/cabane-marcoux/?id="+id;document.getElementById("qrurl").textContent=url;document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);p.dataset.loaded="1"}}
 function go(){ss("Connexion...","w");var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;function tc(){if(ui>=urls.length)ui=0;c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});c.on("connect",function(){ss("Connecte","ok");document.getElementById("vb").disabled=false;var p="cyd/"+id+"/";["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)})});c.on("message",function(tp,m){var v=m.toString(),p="cyd/"+id+"/";if(tp===p+"state")sv(v==="1");if(tp===p+"dompeur")od(v);if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";if(tp===p+"basin1")sba(1,v);if(tp===p+"basin2")sba(2,v);if(tp===p+"basin3")sba(3,v)});c.on("error",function(){ss("Essai...","w");c.end(true);ui++;setTimeout(tc,1000)});c.on("close",function(){ss("Deconnecte","er");document.getElementById("vb").disabled=true})}tc()}
 go();dg();document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
 </script></body></html>
