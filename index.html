@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0a0a1a">
+<title>Cabane Marcoux</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial;background:#0a0a1a;color:#fff;user-select:none}
+.hd{background:#0a3d7a;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.hd h1{font-size:16px;letter-spacing:1px}
+.dt{width:8px;height:8px;border-radius:50%;background:#f44}.dt.ok{background:#4f4}.dt.w{background:#ff4}
+.w{max-width:460px;margin:0 auto;padding:10px}
+.r{display:flex;gap:8px;margin-bottom:8px}
+.cd{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:8px;padding:12px;flex:1}
+.cd .lb{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.cd .vl{font-family:monospace;font-size:24px;font-weight:700;text-align:center}
+.cd.dm .vl{color:#0ff}.cd.tp .vl{color:#fd20}
+.gc{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:8px;padding:8px;margin-bottom:8px}
+.gc .gl{font-size:10px;color:#0ff;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;display:flex;justify-content:space-between}
+.gc .ar{font-size:14px;font-weight:700}.gc .ar.u{color:#f44}.gc .ar.d{color:#4f4}
+.gc canvas{width:100%;height:90px;display:block;border-radius:4px}
+.bc{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:8px;padding:8px 12px;margin-bottom:8px}
+.br{display:flex;align-items:center;gap:6px;margin-bottom:4px}.br:last-child{margin:0}
+.br .nl{font-size:10px;color:#6bf;width:52px}.br .bw{flex:1;background:#111;border-radius:3px;height:8px;overflow:hidden}
+.br .bf{height:100%;border-radius:3px;transition:width .5s}.bf.h{background:#4f4}.bf.m{background:#ff4}.bf.l{background:#f44}
+.br .pc{font-family:monospace;font-size:12px;width:30px;text-align:right}
+.vb{width:100%;padding:14px;border:none;border-radius:10px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:10px}
+.vb.off{background:#0a6dd9}.vb.on{background:#e94560}.vb:disabled{background:#333}
+.vd{width:12px;height:12px;border-radius:50%;border:2px solid #fff4}.vd.a{background:#4f4;box-shadow:0 0 8px #4f4}
+.sb{background:#111;border-radius:6px;padding:6px 12px;display:flex;justify-content:space-between;font-size:11px;color:#666}
+</style></head><body>
+<div class="hd"><h1>CABANE MARCOUX</h1><div class="dt w" id="dt"></div></div>
+<div class="w">
+<div class="r"><div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div></div><div class="cd tp"><div class="lb">Temperature</div><div class="vl" id="tmp">--.-°C</div></div></div>
+<div class="gc"><div class="gl"><span>Tendance</span><span class="ar" id="ar"></span></div><canvas id="gr" height="90"></canvas></div>
+<div class="bc"><div class="br"><span class="nl">Bassin 1</span><div class="bw"><div class="bf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div><div class="br"><span class="nl">Bassin 2</span><div class="bw"><div class="bf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div><div class="br"><span class="nl">Bassin 3</span><div class="bw"><div class="bf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div></div>
+<button class="vb off" id="vb" onclick="tg()" disabled><span class="vd" id="vd"></span><span id="vt">VACUUM ON</span></button>
+<div class="sb"><span id="st">Connexion...</span><span>ID: <span id="did">---</span></span></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
+<script>
+var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+document.getElementById("did").textContent=id;
+function sv(on){document.getElementById("vb").className="vb "+(on?"on":"off");document.getElementById("vd").className="vd"+(on?" a":"");document.getElementById("vt").textContent=on?"VACUUM OFF":"VACUUM ON"}
+function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=50?"h":l>=25?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
+function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);var W=cv.offsetWidth,H=90;ctx.clearRect(0,0,W,H);ctx.fillStyle="#111";ctx.fillRect(0,0,W,H);if(hist.length<2){ctx.fillStyle="#444";ctx.font="12px Arial";ctx.textAlign="center";ctx.fillText("En attente...",W/2,H/2+4);document.getElementById("ar").textContent="";return}var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;if(rg<10){mn-=5;mx+=5;rg=mx-mn}var p={l:30,r:8,t:6,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;ctx.strokeStyle="#2a2a4e";ctx.setLineDash([3,3]);for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}ctx.setLineDash([]);ctx.fillStyle="#556";ctx.font="9px monospace";ctx.textAlign="right";ctx.fillText(mx+"s",p.l-3,p.t+7);ctx.fillText(mn+"s",p.l-3,p.t+ch+3);ctx.lineWidth=2;ctx.lineJoin="round";for(var i=1;i<n;i++){var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;ctx.strokeStyle=hist[i]<=hist[i-1]?"#4f4":"#f44";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}var a=document.getElementById("ar");if(hist[n-1]>hist[0]){a.textContent="▲";a.className="ar u"}else{a.textContent="▼";a.className="ar d"}}
+function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
+function ss(t,cl){document.getElementById("st").textContent=t;document.getElementById("dt").className="dt "+cl}
+function tg(){if(c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle")}
+function go(){ss("Connexion...","w");var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;function tc(){if(ui>=urls.length)ui=0;c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});c.on("connect",function(){ss("Connecte","ok");document.getElementById("vb").disabled=false;var p="cyd/"+id+"/";["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)})});c.on("message",function(tp,m){var v=m.toString(),p="cyd/"+id+"/";if(tp===p+"state")sv(v==="1");if(tp===p+"dompeur")od(v);if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";if(tp===p+"basin1")sba(1,v);if(tp===p+"basin2")sba(2,v);if(tp===p+"basin3")sba(3,v)});c.on("error",function(){ss("Essai...","w");c.end(true);ui++;setTimeout(tc,1000)});c.on("close",function(){ss("Deconnecte","er");document.getElementById("vb").disabled=true})}tc()}
+go();dg();document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
+</script></body></html>
