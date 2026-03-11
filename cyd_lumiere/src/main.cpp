@@ -126,13 +126,13 @@ const unsigned long WIFI_CONNECT_TIMEOUT = 15000; // 15s max
 
 // Dropdown menu
 bool menuOpen = false;
-#define MENU_ITEMS   4
+#define MENU_ITEMS   5
 #define MENU_X       2
 #define MENU_Y       28
 #define MENU_W       140
 #define MENU_ITEM_H  32
 #define MENU_H       (MENU_ITEMS * MENU_ITEM_H + 2)
-const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos" };
+const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos", "Vacuum" };
 
 // WiFi scan results
 #define WIFI_MAX_SCAN 5
@@ -192,16 +192,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (String(topic) == mqttTopicCmd) {
     if (msg == "toggle") {
       lightOn = !lightOn;
-      if (currentScreen == SCREEN_MAIN && !menuOpen) drawVacuumBtn();
       publishState();
       Serial.printf(">>> MQTT: Vacuum %s\n", lightOn ? "ON" : "OFF");
     } else if (msg == "on") {
       lightOn = true;
-      if (currentScreen == SCREEN_MAIN && !menuOpen) drawVacuumBtn();
       publishState();
     } else if (msg == "off") {
       lightOn = false;
-      if (currentScreen == SCREEN_MAIN && !menuOpen) drawVacuumBtn();
       publishState();
     }
   }
@@ -309,18 +306,18 @@ void drawHeader() {
 }
 
 void drawDompeurCard() {
-  int cx = 4, cy = 34, cw = 154, ch = 34;
+  int cx = 4, cy = 40, cw = SW - 8, ch = 56;
   tft.fillRect(cx, cy, cw, 2, C_AMBER);
   tft.fillRoundRect(cx, cy + 2, cw, ch - 2, 4, C_CARD);
   tft.drawRoundRect(cx, cy + 2, cw, ch - 2, 4, C_BORDER);
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
-  tft.drawString("DOMPEUR", cx + 8, cy + 5);
-  tft.setTextSize(2);
+  tft.drawString("TEMPS DOMPEUR", cx + 10, cy + 6);
+  tft.setTextSize(4);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_AMBER, C_CARD);
-  tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 24);
+  tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 36);
 }
 
 void drawTempCard() {
@@ -415,43 +412,43 @@ void drawTrendGraph() {
 
 // ---- Basins (horizontal bars) ----
 void drawBasinBar(int y, const char* name, int level) {
-  int nameX = 10, barX = 62, barW = 210, barH = 12;
+  int nameX = 10, barX = 68, barW = 200, barH = 20;
   // Name
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(C_LABEL, C_CARD);
-  tft.drawString(name, nameX, y + 7);
+  tft.drawString(name, nameX, y + 12);
   // Bar wrapper
-  tft.fillRect(barX, y + 1, barW, barH, C_BG);
-  tft.drawRect(barX, y + 1, barW, barH, C_BORDER);
+  tft.fillRect(barX, y + 2, barW, barH, C_BG);
+  tft.drawRect(barX, y + 2, barW, barH, C_BORDER);
   // Fill
   int fillW = (barW - 2) * level / 100;
   if (fillW > 0) {
     uint16_t bc = C_GREEN;
     if (level >= 50) bc = C_RED;
     else if (level >= 25) bc = C_AMBER;
-    tft.fillRect(barX + 1, y + 2, fillW, barH - 2, bc);
+    tft.fillRect(barX + 1, y + 3, fillW, barH - 2, bc);
   }
   // Percentage
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(C_TXT_DIM, C_CARD);
   String pct = String(level) + "%";
-  tft.drawString(pct.c_str(), SW - 10, y + 7);
+  tft.drawString(pct.c_str(), SW - 10, y + 12);
 }
 
 void drawBasinCards() {
-  int cy = 132, ch = 64;
+  int cy = 112, ch = 100;
   tft.fillRoundRect(4, cy, SW - 8, ch, 4, C_CARD);
   tft.drawRoundRect(4, cy, SW - 8, ch, 4, C_BORDER);
-  // Header like HTML "Etat de remplissage"
+  // Header
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
-  tft.drawString("ETAT DE REMPLISSAGE", 10, cy + 3);
-  // Compact basin bars
-  drawBasinBar(cy + 13, "BASSIN 1", basin1);
-  drawBasinBar(cy + 29, "BASSIN 2", basin2);
-  drawBasinBar(cy + 45, "BASSIN 3", basin3);
+  tft.drawString("ETAT DE REMPLISSAGE", 10, cy + 4);
+  // Big basin bars
+  drawBasinBar(cy + 16, "BASSIN 1", basin1);
+  drawBasinBar(cy + 44, "BASSIN 2", basin2);
+  drawBasinBar(cy + 72, "BASSIN 3", basin3);
 }
 
 void drawVacuumBtn() {
@@ -485,24 +482,30 @@ void drawVacuumBtn() {
 }
 
 void drawStatusBar() {
-  int sy = 228;
-  tft.fillRoundRect(4, sy, SW - 8, 12, 3, C_SB_BG);
-  tft.drawRoundRect(4, sy, SW - 8, 12, 3, C_BORDER);
+  int sy = 216, sh = 20;
+  tft.fillRoundRect(4, sy, SW - 8, sh, 3, C_SB_BG);
+  tft.drawRoundRect(4, sy, SW - 8, sh, 3, C_BORDER);
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(ML_DATUM);
   if (WiFi.status() == WL_CONNECTED) {
-    tft.fillCircle(12, sy + 6, 2, C_GREEN);
+    tft.fillCircle(14, sy + sh / 2, 3, C_GREEN);
     tft.setTextColor(C_TXT_DIM, C_SB_BG);
-    tft.drawString(WiFi.localIP().toString().c_str(), 18, sy + 6);
+    tft.drawString("Connecte", 22, sy + sh / 2);
   } else {
-    tft.fillCircle(12, sy + 6, 2, C_RED);
+    tft.fillCircle(14, sy + sh / 2, 3, C_RED);
     tft.setTextColor(C_TXT_DIM, C_SB_BG);
-    tft.drawString("Deconnecte", 18, sy + 6);
+    tft.drawString("Deconnecte", 22, sy + sh / 2);
   }
+  // Temperature au centre
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(C_CYAN, C_SB_BG);
+  String tempStr = String(temperature, 1) + "C";
+  tft.drawString(tempStr.c_str(), SW / 2, sy + sh / 2);
+  // Device ID a droite
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(C_TXT_DIM, C_SB_BG);
   String idStr = "ID: " + deviceId;
-  tft.drawString(idStr.c_str(), SW - 10, sy + 6);
+  tft.drawString(idStr.c_str(), SW - 10, sy + sh / 2);
 }
 
 void updateDompeurTime(String newTime) {
@@ -519,22 +522,16 @@ void updateDompeurTime(String newTime) {
   }
   if (currentScreen == SCREEN_MAIN && !menuOpen) {
     drawDompeurCard();
-    drawTrendGraph();
   }
 }
 
 void drawMainScreen() {
   tft.fillScreen(C_BG);
   drawHeader();
-  drawSectionDiv(24, "MESURES TEMPS REEL");
+  drawSectionDiv(28, "DOMPEUR");
   drawDompeurCard();
-  drawTempCard();
-  drawSectionDiv(70, "TENDANCE DOMPEUR");
-  drawTrendGraph();
-  drawSectionDiv(124, "NIVEAU DES BASSINS");
+  drawSectionDiv(100, "NIVEAU DES BASSINS");
   drawBasinCards();
-  drawSectionDiv(198, "CONTROLE VACUUM");
-  drawVacuumBtn();
   drawStatusBar();
 }
 
@@ -816,13 +813,6 @@ void handleMainTouch(int tx, int ty) {
     drawDropdownMenu();
     return;
   }
-  // Vacuum slider (full width)
-  if (ty >= 204 && ty <= 226) {
-    lightOn = !lightOn;
-    drawVacuumBtn();
-    publishState();
-    Serial.printf(">>> Touch: Vacuum %s\n", lightOn ? "ON" : "OFF");
-  }
 }
 
 // ---- Dropdown Menu ----
@@ -886,6 +876,12 @@ void handleDropdownTouch(int tx, int ty) {
         menuOpen = false;
         currentScreen = SCREEN_INFO;
         drawInfoScreen();
+        break;
+      case 4: // Vacuum toggle
+        lightOn = !lightOn;
+        publishState();
+        Serial.printf(">>> Menu: Vacuum %s\n", lightOn ? "ON" : "OFF");
+        closeDropdownMenu();
         break;
     }
   } else {
