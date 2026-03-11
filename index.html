@@ -61,7 +61,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .bf.l{background:linear-gradient(90deg,#14532d,#22c55e);box-shadow:inset 0 0 8px rgba(34,197,94,.2)}
 .br .pc{font-family:'Courier New',monospace;font-size:11px;width:36px;text-align:right;color:#7a8fa8;font-weight:700}
 /* CALIBRATION GEAR */
-.cal-gear{position:absolute;top:10px;right:12px;background:none;border:none;color:#475569;font-size:16px;cursor:pointer;padding:4px;transition:color .2s}
+.cal-gear{background:none;border:none;color:#475569;font-size:28px;cursor:pointer;padding:2px 0;transition:color .2s;line-height:1}
 .cal-gear:active{color:#f59e0b}
 /* SLIDER */
 .sl-wrap{margin-bottom:16px}
@@ -144,11 +144,10 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   </div>
   <div class="sec"><span>Niveau des bassins</span></div>
   <div class="bc">
-    <div class="bc-hd"><span>&#201;tat de remplissage</span><span>&#9646;&#9646;&#9646;</span></div>
+    <div class="bc-hd"><span>&#201;tat de remplissage</span><button class="cal-gear" onclick="showCalPin()">&#9881;</button></div>
     <div class="br"><span class="nl">Bassin 1</span><div class="bw"><div class="bf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
     <div class="br"><span class="nl">Bassin 2</span><div class="bw"><div class="bf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
     <div class="br"><span class="nl">Bassin 3</span><div class="bw"><div class="bf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
-    <button class="cal-gear" onclick="showCalPin()">&#9881;</button>
   </div>
   <div class="sec"><span>Contr&#244;le vacuum</span></div>
   <div class="sl-wrap">
