@@ -101,6 +101,13 @@ float temperature = 0.0;
 int basin1 = 0;  // 0-100%
 int basin2 = 0;
 int basin3 = 0;
+int rawBasin[3] = {0, 0, 0};  // raw sensor values
+int calLow[3]  = {-1, -1, -1}; // calibration low points (-1 = not set)
+int calHigh[3] = {-1, -1, -1}; // calibration high points
+
+// PIN entry
+String pinCode = "";
+const char* CAL_PIN = "123";
 
 // Dompeur trend graph
 #define GRAPH_MAX 30
@@ -117,7 +124,7 @@ void addDompeurPoint(int seconds) {
 }
 
 // ---- Screen states ----
-enum Screen { SCREEN_MAIN, SCREEN_WIFI_LIST, SCREEN_WIFI_PASS, SCREEN_WIFI_CONNECTING, SCREEN_WIFI_FAIL, SCREEN_QR_LOCAL, SCREEN_QR_REMOTE, SCREEN_INFO };
+enum Screen { SCREEN_MAIN, SCREEN_WIFI_LIST, SCREEN_WIFI_PASS, SCREEN_WIFI_CONNECTING, SCREEN_WIFI_FAIL, SCREEN_QR_LOCAL, SCREEN_QR_REMOTE, SCREEN_INFO, SCREEN_PIN, SCREEN_CALIB };
 Screen currentScreen = SCREEN_MAIN;
 
 // Non-blocking WiFi connection
@@ -126,13 +133,13 @@ const unsigned long WIFI_CONNECT_TIMEOUT = 15000; // 15s max
 
 // Dropdown menu
 bool menuOpen = false;
-#define MENU_ITEMS   5
+#define MENU_ITEMS   4
 #define MENU_X       2
 #define MENU_Y       28
 #define MENU_W       140
 #define MENU_ITEM_H  32
 #define MENU_H       (MENU_ITEMS * MENU_ITEM_H + 2)
-const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos", "Vacuum" };
+const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos" };
 
 // WiFi scan results
 #define WIFI_MAX_SCAN 5
@@ -288,10 +295,10 @@ void drawSectionDiv(int y, const char* txt) {
 void drawHeader() {
   tft.fillRect(0, 0, SW, 24, C_HEADER);
   // Title
-  tft.setTextFont(1); tft.setTextSize(1);
+  tft.setTextFont(1); tft.setTextSize(2);
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(C_TXT, C_HEADER);
-  tft.drawString("CABANE MARCOUX", 10, 12);
+  tft.drawString("CABANE MARCOUX", 8, 12);
   // Menu icon (right side)
   drawMenuIcon();
   // WiFi dot
@@ -429,10 +436,24 @@ void drawBasinBar(int y, const char* name, int level) {
   tft.drawString(pct.c_str(), SW - 10, y + 13);
 }
 
+void drawGearIcon(int x, int y) {
+  // 16x16 gear icon
+  tft.fillCircle(x + 8, y + 8, 6, C_TXT_GRAY);
+  tft.fillCircle(x + 8, y + 8, 3, C_CARD);
+  // Teeth (4 cardinal + 4 diagonal)
+  for (int a = 0; a < 4; a++) {
+    int dx[] = {0, 8, 0, -8};
+    int dy[] = {-8, 0, 8, 0};
+    tft.fillRect(x + 8 + dx[a] - 1, y + 8 + dy[a] - 1, 3, 3, C_TXT_GRAY);
+  }
+}
+
 void drawBasinCards() {
   int cy = 88, ch = 120;
   tft.fillRoundRect(4, cy, SW - 8, ch, 6, C_CARD);
   tft.drawRoundRect(4, cy, SW - 8, ch, 6, C_BORDER);
+  // Gear icon (top-right of card)
+  drawGearIcon(SW - 28, cy + 4);
   // Basin bars (evenly spaced)
   drawBasinBar(cy + 12, "Bassin 1", basin1);
   drawBasinBar(cy + 48, "Bassin 2", basin2);
@@ -510,6 +531,214 @@ void updateDompeurTime(String newTime) {
   }
   if (currentScreen == SCREEN_MAIN && !menuOpen) {
     drawDompeurCard();
+  }
+}
+
+// Forward declarations
+void drawCalibScreen();
+void drawPinScreen();
+
+// ---- PIN Screen ----
+void drawPinScreen() {
+  tft.fillScreen(C_BG);
+  tft.fillRect(0, 0, SW, 24, C_HEADER);
+  tft.setTextFont(1); tft.setTextSize(1);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(C_CYAN, C_HEADER);
+  tft.drawString("NIP CALIBRATION", SW / 2, 12);
+
+  // PIN dots
+  for (int i = 0; i < 3; i++) {
+    int dx = SW / 2 - 30 + i * 30;
+    if ((int)pinCode.length() > i) {
+      tft.fillCircle(dx, 40, 7, C_CYAN);
+    } else {
+      tft.drawCircle(dx, 40, 7, C_BORDER);
+    }
+  }
+
+  // Keypad 3x4
+  const char keys[] = "123456789*0#";
+  for (int r = 0; r < 4; r++) {
+    for (int col = 0; col < 3; col++) {
+      int kx = 50 + col * 80;
+      int ky = 62 + r * 38;
+      char k = keys[r * 3 + col];
+      if (k == '*') {
+        // Delete key
+        tft.fillRoundRect(kx, ky, 68, 32, 6, C_CARD);
+        tft.setTextDatum(MC_DATUM);
+        tft.setTextColor(C_RED, C_CARD);
+        tft.setTextSize(1);
+        tft.drawString("DEL", kx + 34, ky + 16);
+      } else if (k == '#') {
+        // Empty
+        tft.fillRoundRect(kx, ky, 68, 32, 6, C_CARD);
+      } else {
+        tft.fillRoundRect(kx, ky, 68, 32, 6, C_BORDER);
+        tft.setTextFont(1); tft.setTextSize(2);
+        tft.setTextDatum(MC_DATUM);
+        tft.setTextColor(C_TXT, C_BORDER);
+        char buf[2] = {k, 0};
+        tft.drawString(buf, kx + 34, ky + 16);
+      }
+    }
+  }
+
+  // Annuler button
+  tft.fillRoundRect(SW / 2 - 55, 218, 110, 20, 6, C_CARD);
+  tft.setTextFont(1); tft.setTextSize(1);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(C_TXT_GRAY, C_CARD);
+  tft.drawString("ANNULER", SW / 2, 228);
+}
+
+void handlePinTouch(int tx, int ty) {
+  // Annuler
+  if (ty >= 218) {
+    pinCode = "";
+    currentScreen = SCREEN_MAIN;
+    drawMainScreen();
+    return;
+  }
+  // Keypad
+  const char keys[] = "123456789*0#";
+  for (int r = 0; r < 4; r++) {
+    for (int col = 0; col < 3; col++) {
+      int kx = 50 + col * 80;
+      int ky = 62 + r * 38;
+      if (tx >= kx && tx <= kx + 68 && ty >= ky && ty <= ky + 32) {
+        char k = keys[r * 3 + col];
+        if (k == '*') {
+          // Delete
+          if (pinCode.length() > 0) pinCode.remove(pinCode.length() - 1);
+          drawPinScreen();
+        } else if (k == '#') {
+          // Nothing
+        } else if (pinCode.length() < 3) {
+          pinCode += k;
+          drawPinScreen();
+          if (pinCode.length() == 3) {
+            delay(200);
+            if (pinCode == String(CAL_PIN)) {
+              pinCode = "";
+              currentScreen = SCREEN_CALIB;
+              drawCalibScreen();
+            } else {
+              // Wrong PIN - show error briefly
+              tft.setTextFont(1); tft.setTextSize(1);
+              tft.setTextDatum(MC_DATUM);
+              tft.setTextColor(C_RED, C_BG);
+              tft.drawString("Code incorrect", SW / 2, 54);
+              delay(800);
+              pinCode = "";
+              drawPinScreen();
+            }
+          }
+        }
+        return;
+      }
+    }
+  }
+}
+
+// ---- Calibration Screen (2-point, like HTML) ----
+void drawCalibScreen() {
+  tft.fillScreen(C_BG);
+  tft.fillRect(0, 0, SW, 24, C_HEADER);
+  tft.setTextFont(1); tft.setTextSize(1);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(C_CYAN, C_HEADER);
+  tft.drawString("CALIBRATION BASSINS", SW / 2, 12);
+
+  const char* names[] = {"Bassin 1", "Bassin 2", "Bassin 3"};
+
+  for (int i = 0; i < 3; i++) {
+    int ry = 30 + i * 60;
+    // Basin name + raw value
+    tft.setTextFont(1); tft.setTextSize(1);
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextColor(C_LABEL, C_BG);
+    tft.drawString(names[i], 10, ry + 4);
+    tft.setTextDatum(MR_DATUM);
+    tft.setTextColor(C_AMBER, C_BG);
+    String rawStr = "Brut: " + String(rawBasin[i]);
+    tft.drawString(rawStr.c_str(), SW - 10, ry + 4);
+
+    // Calibration info
+    tft.setTextDatum(ML_DATUM);
+    tft.setTextColor(C_TXT_DIM, C_BG);
+    String info = "Bas: " + (calLow[i] >= 0 ? String(calLow[i]) : String("--")) +
+                  " | Haut: " + (calHigh[i] >= 0 ? String(calHigh[i]) : String("--"));
+    tft.drawString(info.c_str(), 10, ry + 18);
+
+    // Bas Niveau button (red)
+    tft.fillRoundRect(10, ry + 30, 140, 22, 4, C_RED);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(C_TXT, C_RED);
+    tft.drawString("BAS NIVEAU", 80, ry + 41);
+
+    // Haut Niveau button (blue)
+    uint16_t btnBlue = tft.color565(30, 64, 175);
+    tft.fillRoundRect(168, ry + 30, 140, 22, 4, btnBlue);
+    tft.setTextColor(C_TXT, btnBlue);
+    tft.drawString("HAUT NIVEAU", 238, ry + 41);
+  }
+
+  // Fermer button
+  tft.fillRoundRect(SW / 2 - 55, 215, 110, 22, 6, C_CARD);
+  tft.setTextFont(1); tft.setTextSize(1);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(C_TXT_GRAY, C_CARD);
+  tft.drawString("FERMER", SW / 2, 226);
+}
+
+void handleCalibTouch(int tx, int ty) {
+  // Fermer button
+  if (ty >= 215) {
+    // Save calibration to Preferences
+    prefs.begin("calib", false);
+    for (int i = 0; i < 3; i++) {
+      String kl = "lo" + String(i);
+      String kh = "hi" + String(i);
+      prefs.putInt(kl.c_str(), calLow[i]);
+      prefs.putInt(kh.c_str(), calHigh[i]);
+    }
+    prefs.end();
+    currentScreen = SCREEN_MAIN;
+    drawMainScreen();
+    return;
+  }
+  // Bas/Haut buttons for each basin
+  for (int i = 0; i < 3; i++) {
+    int ry = 30 + i * 60;
+    if (ty >= ry + 30 && ty <= ry + 52) {
+      if (tx >= 10 && tx <= 150) {
+        // Bas Niveau - capture raw value
+        calLow[i] = rawBasin[i];
+        Serial.printf(">>> Calib Basin %d LOW = %d\n", i + 1, rawBasin[i]);
+        // Publish MQTT calibration command
+        if (mqtt.connected()) {
+          String cmd = "{\"basin\":" + String(i + 1) + ",\"point\":\"low\"}";
+          String topic = "cyd/" + deviceId + "/cmd/cal";
+          mqtt.publish(topic.c_str(), cmd.c_str());
+        }
+        drawCalibScreen();
+        return;
+      }
+      if (tx >= 168 && tx <= 308) {
+        // Haut Niveau - capture raw value
+        calHigh[i] = rawBasin[i];
+        Serial.printf(">>> Calib Basin %d HIGH = %d\n", i + 1, rawBasin[i]);
+        if (mqtt.connected()) {
+          String cmd = "{\"basin\":" + String(i + 1) + ",\"point\":\"high\"}";
+          String topic = "cyd/" + deviceId + "/cmd/cal";
+          mqtt.publish(topic.c_str(), cmd.c_str());
+        }
+        drawCalibScreen();
+        return;
+      }
+    }
   }
 }
 
@@ -799,6 +1028,13 @@ void handleMainTouch(int tx, int ty) {
     drawDropdownMenu();
     return;
   }
+  // Gear icon on basin card -> PIN screen
+  if (tx >= SW - 32 && tx <= SW - 4 && ty >= 86 && ty <= 110) {
+    pinCode = "";
+    currentScreen = SCREEN_PIN;
+    drawPinScreen();
+    return;
+  }
 }
 
 // ---- Dropdown Menu ----
@@ -862,12 +1098,6 @@ void handleDropdownTouch(int tx, int ty) {
         menuOpen = false;
         currentScreen = SCREEN_INFO;
         drawInfoScreen();
-        break;
-      case 4: // Vacuum toggle
-        lightOn = !lightOn;
-        publishState();
-        Serial.printf(">>> Menu: Vacuum %s\n", lightOn ? "ON" : "OFF");
-        closeDropdownMenu();
         break;
     }
   } else {
@@ -1208,6 +1438,11 @@ void setup() {
   mqttTopicBasin1 = "cyd/" + deviceId + "/basin1";
   mqttTopicBasin2 = "cyd/" + deviceId + "/basin2";
   mqttTopicBasin3 = "cyd/" + deviceId + "/basin3";
+  // Additional topics for calibration
+  String mqttTopicRaw1 = "cyd/" + deviceId + "/raw1";
+  String mqttTopicRaw2 = "cyd/" + deviceId + "/raw2";
+  String mqttTopicRaw3 = "cyd/" + deviceId + "/raw3";
+  String mqttTopicCal = "cyd/" + deviceId + "/cmd/cal";
   Serial.printf("Device ID: %s\n", deviceId.c_str());
   Serial.printf("MQTT topics: %s, %s\n", mqttTopicState.c_str(), mqttTopicCmd.c_str());
 
@@ -1238,6 +1473,17 @@ void setup() {
   // NVS
   String savedSSID = "";
   String savedPass = "";
+  // Load 2-point calibration
+  if (prefs.begin("calib", true)) {
+    for (int i = 0; i < 3; i++) {
+      String kl = "lo" + String(i);
+      String kh = "hi" + String(i);
+      calLow[i] = prefs.getInt(kl.c_str(), -1);
+      calHigh[i] = prefs.getInt(kh.c_str(), -1);
+    }
+    prefs.end();
+  }
+
   if (prefs.begin("wifi", false)) {
     savedSSID = prefs.getString("ssid", "");
     savedPass = prefs.getString("pass", "");
@@ -1344,6 +1590,12 @@ void loop() {
         break;
       case SCREEN_INFO:
         handleInfoTouch(sx, sy);
+        break;
+      case SCREEN_PIN:
+        handlePinTouch(sx, sy);
+        break;
+      case SCREEN_CALIB:
+        handleCalibTouch(sx, sy);
         break;
       default:
         break;
