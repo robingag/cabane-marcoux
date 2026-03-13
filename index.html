@@ -346,7 +346,7 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
-function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=(basinDepth[n]*l/100).toFixed(1);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
+function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
 function syncUnitUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthRow"+n).style.display=basinUnit==="in"?"flex":"none";document.getElementById("depthVal"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po"}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncUnitUI();for(var n=1;n<=3;n++)sba(n,basinPct[n])}
 var depthEditBasin=0,depthCode="";
