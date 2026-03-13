@@ -331,7 +331,7 @@ function dg(){
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
   var a=document.getElementById("ar");
-  if(hist[n-1]>hist[0]){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}
+  if(hist[n-1]>hist[n-2]){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}
   else{a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.className="ar d"}
 }
 var dmpElapsed=0,dmpTimer=null;
