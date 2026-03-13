@@ -418,7 +418,8 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/depth","settings/meo"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/depth","settings/meo","settings/sync"].forEach(function(t){c.subscribe(p+t)});
+      c.publish(p+"settings/sync","req");
     });
     c.on("message",function(tp,m){
       var v=m.toString(),p="cyd/"+id+"/";
@@ -437,6 +438,7 @@ function go(){
       if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}syncUnitUI();for(var i=1;i<=3;i++)sba(i,basinPct[i])}
       if(tp===p+"settings/depth"){try{basinDepth=JSON.parse(v);localStorage.setItem("depth_"+id,v);syncUnitUI();for(var i=1;i<=3;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/meo"){meoOn=v==="1";document.getElementById("meo-btn").style.color=meoOn?"#f59e0b":"#64748b";if(!meoOn)document.getElementById("ar").textContent="";if(meoOn&&hist.length>=2)dg()}
+      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true})}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
     c.on("close",function(){ss("Deconnecte","er")});
