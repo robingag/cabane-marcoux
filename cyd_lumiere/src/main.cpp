@@ -36,6 +36,29 @@ unsigned long lastMqttRetry = 0;
 #define T_DO   39
 #define T_IRQ  36
 
+// Limit switch for dompeur timing (GPIO 27, P3 connector)
+#define LIMIT_SW_PIN 27
+
+// JSN-SR04T ultrasonic sensor
+// Bassin 1: 2-wire on GPIO 22 (CN1/P3 connector)
+#define US1_PIN  22
+
+volatile unsigned long lsLastEdge = 0;
+volatile unsigned long lsCycleMs = 0;
+volatile bool lsNewCycle = false;
+
+void IRAM_ATTR limitSwitchISR() {
+  unsigned long now = millis();
+  unsigned long delta = now - lsLastEdge;
+  if (delta > 200) {  // debounce 200ms
+    if (lsLastEdge > 0) {
+      lsCycleMs = delta;
+      lsNewCycle = true;
+    }
+    lsLastEdge = now;
+  }
+}
+
 SPIClass touchSPI(VSPI);
 
 // Screen (landscape)
@@ -94,6 +117,10 @@ void drawMapleLeaf(int x, int y, int scale) {
 }
 
 bool lightOn = false;
+#define VACUUM_PIN 4
+// PIN reason: 0=calibration, 1=vacuum
+int pinReason = 0;
+const char* VACUUM_PIN_CODE = "777";
 
 // Sensor data
 String dompeurTime = "--:--";
@@ -123,6 +150,41 @@ void addDompeurPoint(int seconds) {
   }
 }
 
+unsigned long lastUltrasonicRead = 0;
+const unsigned long US_INTERVAL = 500; // lecture chaque 500ms
+
+// Lecture 2 fils: meme pin pour trig et echo
+long readUltrasonic2Wire(int pin) {
+  // Envoyer pulse trigger
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pin, LOW);
+  // Passer en input pour lire l'echo
+  pinMode(pin, INPUT);
+  long duration = pulseIn(pin, HIGH, 30000); // timeout 30ms
+  if (duration == 0) return -1;
+  return duration / 58; // distance en cm
+}
+
+// Convertir distance en pourcentage avec calibration 2 points
+// calLow = distance quand bassin vide (loin), calHigh = distance quand plein (proche)
+int distanceToPercent(long distCm, int idx) {
+  if (distCm < 0) return -1; // erreur lecture
+  if (calLow[idx] < 0 || calHigh[idx] < 0) {
+    // Pas calibre: retourner distance brute comme raw
+    rawBasin[idx] = (int)distCm;
+    return 0;
+  }
+  rawBasin[idx] = (int)distCm;
+  // calLow = distance vide (grande), calHigh = distance plein (petite)
+  // Inverser: plus la distance est petite, plus le niveau est haut
+  int pct = map(distCm, calLow[idx], calHigh[idx], 0, 100);
+  return constrain(pct, 0, 100);
+}
+
 // ---- Screen states ----
 enum Screen { SCREEN_MAIN, SCREEN_WIFI_LIST, SCREEN_WIFI_PASS, SCREEN_WIFI_CONNECTING, SCREEN_WIFI_FAIL, SCREEN_QR_LOCAL, SCREEN_QR_REMOTE, SCREEN_INFO, SCREEN_PIN, SCREEN_CALIB };
 Screen currentScreen = SCREEN_MAIN;
@@ -133,13 +195,13 @@ const unsigned long WIFI_CONNECT_TIMEOUT = 15000; // 15s max
 
 // Dropdown menu
 bool menuOpen = false;
-#define MENU_ITEMS   4
+#define MENU_ITEMS   5
 #define MENU_X       2
 #define MENU_Y       28
 #define MENU_W       140
 #define MENU_ITEM_H  32
 #define MENU_H       (MENU_ITEMS * MENU_ITEM_H + 2)
-const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos" };
+const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos", "Calibration" };
 
 // WiFi scan results
 #define WIFI_MAX_SCAN 5
@@ -199,15 +261,49 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (String(topic) == mqttTopicCmd) {
     if (msg == "toggle") {
       lightOn = !lightOn;
+      digitalWrite(VACUUM_PIN, lightOn ? HIGH : LOW);
       publishState();
-      Serial.printf(">>> MQTT: Vacuum %s\n", lightOn ? "ON" : "OFF");
+      Serial.printf(">>> MQTT: Vacuum %s, GPIO4 %s\n", lightOn ? "ON" : "OFF", lightOn ? "HIGH" : "LOW");
     } else if (msg == "on") {
       lightOn = true;
+      digitalWrite(VACUUM_PIN, HIGH);
       publishState();
     } else if (msg == "off") {
       lightOn = false;
+      digitalWrite(VACUUM_PIN, LOW);
       publishState();
     }
+  }
+  // Donnees capteurs entrantes
+  else if (String(topic) == mqttTopicDompeur) {
+    dompeurTime = msg;
+    int colonIdx = msg.indexOf(':');
+    if (colonIdx > 0) {
+      int mins = msg.substring(0, colonIdx).toInt();
+      int secs = msg.substring(colonIdx + 1).toInt();
+      addDompeurPoint(mins * 60 + secs);
+    }
+    Serial.printf(">>> MQTT: Dompeur = %s\n", msg.c_str());
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawDompeurCard();
+  }
+  else if (String(topic) == mqttTopicTemp) {
+    temperature = msg.toFloat();
+    Serial.printf(">>> MQTT: Temp = %.1f\n", temperature);
+  }
+  else if (String(topic) == mqttTopicBasin1) {
+    basin1 = msg.toInt();
+    Serial.printf(">>> MQTT: Basin1 = %d%%\n", basin1);
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+  }
+  else if (String(topic) == mqttTopicBasin2) {
+    basin2 = msg.toInt();
+    Serial.printf(">>> MQTT: Basin2 = %d%%\n", basin2);
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+  }
+  else if (String(topic) == mqttTopicBasin3) {
+    basin3 = msg.toInt();
+    Serial.printf(">>> MQTT: Basin3 = %d%%\n", basin3);
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
   }
 }
 
@@ -225,6 +321,11 @@ void mqttConnect() {
   if (mqtt.connect(clientId.c_str())) {
     Serial.println("MQTT: connecte!");
     mqtt.subscribe(mqttTopicCmd.c_str());
+    mqtt.subscribe(mqttTopicDompeur.c_str());
+    mqtt.subscribe(mqttTopicTemp.c_str());
+    mqtt.subscribe(mqttTopicBasin1.c_str());
+    mqtt.subscribe(mqttTopicBasin2.c_str());
+    mqtt.subscribe(mqttTopicBasin3.c_str());
     publishState();
   } else {
     Serial.printf("MQTT: echec (rc=%d)\n", mqtt.state());
@@ -393,32 +494,32 @@ void drawTrendGraph() {
     int y1 = cy2 + ch - (long)(dompeurHist[i - 1] - minV) * ch / range;
     int x2 = cx + (long)i * cw / (n - 1);
     int y2 = cy2 + ch - (long)(dompeurHist[i] - minV) * ch / range;
-    // Color: green if going down, red if going up
-    uint16_t lc = (dompeurHist[i] <= dompeurHist[i - 1]) ? C_GREEN : C_RED;
+    // Color: green if going up, red if going down
+    uint16_t lc = (dompeurHist[i] >= dompeurHist[i - 1]) ? C_GREEN : C_RED;
     tft.drawLine(x1, y1, x2, y2, lc);
     tft.drawLine(x1, y1 + 1, x2, y2 + 1, lc); // thicker
   }
 
   // Trend arrow (last vs first)
   bool up = dompeurHist[n - 1] > dompeurHist[0];
-  uint16_t arrowC = up ? C_RED : C_GREEN;
+  uint16_t arrowC = up ? C_GREEN : C_RED;
   int ax = gx + gw - 16, ay = gy + 3;
-  if (up) { // arrow up = bad (time increasing)
+  if (up) { // arrow up = good (time increasing)
     tft.fillTriangle(ax, ay + 2, ax - 4, ay + 8, ax + 4, ay + 8, arrowC);
-  } else { // arrow down = good
+  } else { // arrow down = bad (time decreasing)
     tft.fillTriangle(ax, ay + 8, ax - 4, ay + 2, ax + 4, ay + 2, arrowC);
   }
 }
 
 // ---- Basins (horizontal bars) ----
 void drawBasinBar(int y, const char* name, int level) {
-  int nameX = 10, barX = 68, barW = 200, barH = 22;
-  // Name (blue like interface1)
-  tft.setTextFont(1); tft.setTextSize(1);
+  int nameX = 10, barX = 110, barW = 155, barH = 30;
+  // Name (blue, textSize 2)
+  tft.setTextFont(1); tft.setTextSize(2);
   tft.setTextDatum(ML_DATUM);
   tft.setTextColor(C_LABEL, C_CARD);
-  tft.drawString(name, nameX, y + 13);
-  // Bar wrapper (dark bg like interface1)
+  tft.drawString(name, nameX, y + 17);
+  // Bar wrapper
   tft.fillRect(barX, y + 2, barW, barH, C_SB_BG);
   tft.drawRect(barX, y + 2, barW, barH, C_BORDER);
   // Fill
@@ -429,43 +530,41 @@ void drawBasinBar(int y, const char* name, int level) {
     else if (level >= 25) bc = C_YELLOW;
     tft.fillRect(barX + 1, y + 3, fillW, barH - 2, bc);
   }
-  // Percentage (white bold)
+  // Percentage (white, textSize 2)
   tft.setTextDatum(MR_DATUM);
   tft.setTextColor(C_TXT, C_CARD);
   String pct = String(level) + "%";
-  tft.drawString(pct.c_str(), SW - 10, y + 13);
+  tft.drawString(pct.c_str(), SW - 8, y + 17);
 }
 
 void drawGearIcon(int x, int y) {
-  // 16x16 gear icon
-  tft.fillCircle(x + 8, y + 8, 6, C_TXT_GRAY);
-  tft.fillCircle(x + 8, y + 8, 3, C_CARD);
-  // Teeth (4 cardinal + 4 diagonal)
+  // 24x24 gear icon
+  tft.fillCircle(x + 12, y + 12, 9, C_TXT_GRAY);
+  tft.fillCircle(x + 12, y + 12, 4, C_CARD);
+  // Teeth (4 cardinal)
   for (int a = 0; a < 4; a++) {
-    int dx[] = {0, 8, 0, -8};
-    int dy[] = {-8, 0, 8, 0};
-    tft.fillRect(x + 8 + dx[a] - 1, y + 8 + dy[a] - 1, 3, 3, C_TXT_GRAY);
+    int dx[] = {0, 11, 0, -11};
+    int dy[] = {-11, 0, 11, 0};
+    tft.fillRect(x + 12 + dx[a] - 2, y + 12 + dy[a] - 2, 5, 5, C_TXT_GRAY);
   }
 }
 
 void drawBasinCards() {
-  int cy = 88, ch = 120;
+  int cy = 88, ch = 148;
   tft.fillRoundRect(4, cy, SW - 8, ch, 6, C_CARD);
   tft.drawRoundRect(4, cy, SW - 8, ch, 6, C_BORDER);
-  // Gear icon (top-right of card)
-  drawGearIcon(SW - 28, cy + 4);
-  // Basin bars (evenly spaced)
-  drawBasinBar(cy + 12, "Bassin 1", basin1);
-  drawBasinBar(cy + 48, "Bassin 2", basin2);
-  drawBasinBar(cy + 84, "Bassin 3", basin3);
+  drawBasinBar(cy + 20, "Bassin 1", basin1);
+  drawBasinBar(cy + 68, "Bassin 2", basin2);
+  drawBasinBar(cy + 116, "Bassin 3", basin3);
 }
 
 void drawVacuumBtn() {
-  int sx = 4, sy = 204, sw = SW - 8, sh = 22;
+  int sx = 4, sy = 214, sw = SW - 8, sh = 22;
   int hdlW = 36, hdlH = 18;
   // Track
-  uint16_t brd = lightOn ? C_GREEN : C_BORDER;
-  tft.fillRoundRect(sx, sy, sw, sh, 4, C_BG);
+  uint16_t brd = lightOn ? C_GREEN : C_RED;
+  uint16_t trackFill = lightOn ? tft.color565(0, 40, 0) : tft.color565(40, 0, 0);
+  tft.fillRoundRect(sx, sy, sw, sh, 4, trackFill);
   tft.drawRoundRect(sx, sy, sw, sh, 4, brd);
   // Handle
   int hx = lightOn ? (sx + sw - hdlW - 2) : (sx + 2);
@@ -481,11 +580,11 @@ void drawVacuumBtn() {
   tft.setTextSize(1);
   if (!lightOn) {
     tft.setTextDatum(ML_DATUM);
-    tft.setTextColor(tft.color565(180, 50, 50), C_BG);
+    tft.setTextColor(C_RED, trackFill);
     tft.drawString("> VACUUM ON", sx + hdlW + 10, sy + sh / 2);
   } else {
     tft.setTextDatum(MR_DATUM);
-    tft.setTextColor(C_GREEN, C_BG);
+    tft.setTextColor(C_GREEN, trackFill);
     tft.drawString("VACUUM OFF <", sx + sw - hdlW - 10, sy + sh / 2);
   }
 }
@@ -545,7 +644,7 @@ void drawPinScreen() {
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_CYAN, C_HEADER);
-  tft.drawString("NIP CALIBRATION", SW / 2, 12);
+  tft.drawString(pinReason == 1 ? "NIP VACUUM" : "NIP CALIBRATION", SW / 2, 12);
 
   // PIN dots
   for (int i = 0; i < 3; i++) {
@@ -597,6 +696,7 @@ void handlePinTouch(int tx, int ty) {
   // Annuler
   if (ty >= 218) {
     pinCode = "";
+    pinReason = 0;
     currentScreen = SCREEN_MAIN;
     drawMainScreen();
     return;
@@ -620,7 +720,32 @@ void handlePinTouch(int tx, int ty) {
           drawPinScreen();
           if (pinCode.length() == 3) {
             delay(200);
-            if (pinCode == String(CAL_PIN)) {
+            if (pinReason == 1 && pinCode == String(VACUUM_PIN_CODE)) {
+              // Vacuum toggle confirmed
+              pinCode = "";
+              lightOn = !lightOn;
+              digitalWrite(VACUUM_PIN, lightOn ? HIGH : LOW);
+              publishState();
+              Serial.printf(">>> PIN: Vacuum %s, GPIO4 %s\n", lightOn ? "ON" : "OFF", lightOn ? "HIGH" : "LOW");
+              // Feedback screen
+              tft.fillScreen(C_BG);
+              tft.setTextFont(1); tft.setTextSize(2);
+              tft.setTextDatum(MC_DATUM);
+              if (lightOn) {
+                tft.setTextColor(C_GREEN, C_BG);
+                tft.drawString("VACUUM ON", SW / 2, SH / 2 - 10);
+              } else {
+                tft.setTextColor(C_RED, C_BG);
+                tft.drawString("VACUUM OFF", SW / 2, SH / 2 - 10);
+              }
+              tft.setTextSize(1);
+              tft.setTextColor(C_TXT_GRAY, C_BG);
+              tft.drawString(lightOn ? "GPIO 4 = HIGH" : "GPIO 4 = LOW", SW / 2, SH / 2 + 15);
+              delay(1200);
+              pinReason = 0;
+              currentScreen = SCREEN_MAIN;
+              drawMainScreen();
+            } else if (pinReason == 0 && pinCode == String(CAL_PIN)) {
               pinCode = "";
               currentScreen = SCREEN_CALIB;
               drawCalibScreen();
@@ -747,7 +872,7 @@ void drawMainScreen() {
   drawHeader();
   drawDompeurCard();
   drawBasinCards();
-  drawStatusBar();
+  drawVacuumBtn();
 }
 
 // ---- Drawing: WiFi list screen ----
@@ -1028,8 +1153,9 @@ void handleMainTouch(int tx, int ty) {
     drawDropdownMenu();
     return;
   }
-  // Gear icon on basin card -> PIN screen
-  if (tx >= SW - 32 && tx <= SW - 4 && ty >= 86 && ty <= 110) {
+  // Vacuum slider touch -> open PIN
+  if (ty >= 214 && ty <= 236) {
+    pinReason = 1;
     pinCode = "";
     currentScreen = SCREEN_PIN;
     drawPinScreen();
@@ -1098,6 +1224,12 @@ void handleDropdownTouch(int tx, int ty) {
         menuOpen = false;
         currentScreen = SCREEN_INFO;
         drawInfoScreen();
+        break;
+      case 4: // Calibration
+        menuOpen = false;
+        pinCode = "";
+        currentScreen = SCREEN_PIN;
+        drawPinScreen();
         break;
     }
   } else {
@@ -1380,7 +1512,7 @@ var c,id=new URLSearchParams(window.location.search).get("id")||"a48c",hist=[];
 document.getElementById("did").textContent=id;
 function sv(on){document.getElementById("vb").className="vb "+(on?"on":"off");document.getElementById("vd").className="vd"+(on?" a":"");document.getElementById("vt").textContent=on?"VACUUM OFF":"VACUUM ON"}
 function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=50?"h":l>=25?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
-function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);var W=cv.offsetWidth,H=90;ctx.clearRect(0,0,W,H);ctx.fillStyle="#111";ctx.fillRect(0,0,W,H);if(hist.length<2){ctx.fillStyle="#444";ctx.font="12px Arial";ctx.textAlign="center";ctx.fillText("En attente...",W/2,H/2+4);document.getElementById("ar").textContent="";return}var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;if(rg<10){mn-=5;mx+=5;rg=mx-mn}var p={l:30,r:8,t:6,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;ctx.strokeStyle="#2a2a4e";ctx.setLineDash([3,3]);for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}ctx.setLineDash([]);ctx.fillStyle="#556";ctx.font="9px monospace";ctx.textAlign="right";ctx.fillText(mx+"s",p.l-3,p.t+7);ctx.fillText(mn+"s",p.l-3,p.t+ch+3);ctx.lineWidth=2;ctx.lineJoin="round";for(var i=1;i<n;i++){var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;ctx.strokeStyle=hist[i]<=hist[i-1]?"#4f4":"#f44";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}var a=document.getElementById("ar");if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar u"}else{a.textContent="\u25BC";a.className="ar d"}}
+function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);var W=cv.offsetWidth,H=90;ctx.clearRect(0,0,W,H);ctx.fillStyle="#111";ctx.fillRect(0,0,W,H);if(hist.length<2){ctx.fillStyle="#444";ctx.font="12px Arial";ctx.textAlign="center";ctx.fillText("En attente...",W/2,H/2+4);document.getElementById("ar").textContent="";return}var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;if(rg<10){mn-=5;mx+=5;rg=mx-mn}var p={l:30,r:8,t:6,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;ctx.strokeStyle="#2a2a4e";ctx.setLineDash([3,3]);for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}ctx.setLineDash([]);ctx.fillStyle="#556";ctx.font="9px monospace";ctx.textAlign="right";ctx.fillText(mx+"s",p.l-3,p.t+7);ctx.fillText(mn+"s",p.l-3,p.t+ch+3);ctx.lineWidth=2;ctx.lineJoin="round";for(var i=1;i<n;i++){var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;ctx.strokeStyle=hist[i]>=hist[i-1]?"#4f4":"#f44";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}var a=document.getElementById("ar");if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar d"}else{a.textContent="\u25BC";a.className="ar u"}}
 function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
 function ss(t,cl){document.getElementById("st").textContent=t;document.getElementById("dt").className="dt "+cl}
 function tg(){if(c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle")}
@@ -1412,6 +1544,7 @@ void handleState() {
 
 void handleToggle() {
   lightOn = !lightOn;
+  digitalWrite(VACUUM_PIN, lightOn ? HIGH : LOW);
   if (currentScreen == SCREEN_MAIN) drawVacuumBtn();
   publishState();
   Serial.printf(">>> Web: Vacuum %s\n", lightOn ? "ON" : "OFF");
@@ -1452,12 +1585,22 @@ void setup() {
   digitalWrite(T_CS, HIGH);
   pinMode(T_IRQ, INPUT);
 
+  // Limit switch input with pull-up (active LOW)
+  pinMode(LIMIT_SW_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(LIMIT_SW_PIN), limitSwitchISR, CHANGE);
+
+  // Ultrasonic sensor: US1_PIN mode change dans readUltrasonic2Wire()
+
   // Display
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, HIGH);
+
+  // Vacuum GPIO
+  pinMode(VACUUM_PIN, OUTPUT);
+  digitalWrite(VACUUM_PIN, LOW);
 
   // MQTT setup
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
@@ -1564,6 +1707,35 @@ void loop() {
       tft.setTextColor(TFT_WHITE, TFT_BLACK);
       tft.drawString("Touche pour revenir", SW / 2, SH / 2 + 15);
     }
+  }
+
+  // Lecture periodique capteur ultrasonique (bassin 1 seulement)
+  if (millis() - lastUltrasonicRead >= US_INTERVAL) {
+    lastUltrasonicRead = millis();
+
+    long d1 = readUltrasonic2Wire(US1_PIN);
+    int p1 = distanceToPercent(d1, 0);
+    if (p1 >= 0 && p1 != basin1) {
+      basin1 = p1;
+      if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+      if (mqtt.connected()) {
+        mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
+      }
+      Serial.printf("Bassin 1: %dcm = %d%%\n", (int)d1, basin1);
+    }
+  }
+
+  // Process limit switch cycle
+  if (lsNewCycle) {
+    lsNewCycle = false;
+    unsigned long ms = lsCycleMs;
+    int totalSec = ms / 1000;
+    int mins = totalSec / 60;
+    int secs = totalSec % 60;
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%02d:%02d", mins, secs);
+    updateDompeurTime(String(buf));
+    Serial.printf("Dompeur cycle: %lums = %s\n", ms, buf);
   }
 
   int sx, sy;

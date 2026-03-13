@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>CYD Remote</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: #1a1a2e;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    user-select: none;
+    -webkit-user-select: none;
+    padding: 20px;
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+
+  /* --- Setup screen --- */
+  #setup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    max-width: 400px;
+  }
+  #setup h1 { font-size: 28px; margin-bottom: 10px; }
+  #setup .sub { font-size: 14px; color: #888; margin-bottom: 40px; }
+  #setup label { font-size: 16px; color: #aaa; margin-bottom: 10px; }
+  #setup input {
+    background: #2a2a4e;
+    border: 2px solid #444;
+    border-radius: 12px;
+    color: #0f0;
+    font-size: 36px;
+    font-family: monospace;
+    width: 180px;
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 25px;
+    letter-spacing: 8px;
+  }
+  #setup input:focus { outline: none; border-color: #0078d7; }
+  #setup .go {
+    background: #0078d7;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 60px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    max-width: 300px;
+  }
+  #setup .go:active { background: #005a9e; }
+  #setup .hint {
+    margin-top: 30px;
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* --- Remote screen --- */
+  #remote {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 15px;
+  }
+  .top-bar .conn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #f44;
+  }
+  .dot.ok { background: #4f4; }
+  .dot.wait { background: #ff4; }
+  .top-bar .change {
+    background: none;
+    border: 1px solid #555;
+    border-radius: 6px;
+    color: #888;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .device-id {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
+  }
+  .device-id span {
+    font-family: monospace;
+    color: #0f0;
+    font-size: 18px;
+  }
+
+  .light {
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: #333;
+    border: 4px solid #555;
+    margin: 20px 0 40px;
+    transition: all 0.3s ease;
+  }
+  .light.on {
+    background: #ffdd00;
+    box-shadow: 0 0 60px #ffdd00, 0 0 120px #ffaa00;
+    border-color: #ffaa00;
+  }
+
+  .toggle-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 22px;
+    font-size: 26px;
+    font-weight: bold;
+    border: none;
+    border-radius: 16px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle-btn.off { background: #0078d7; }
+  .toggle-btn.off:active { background: #005a9e; transform: scale(0.97); }
+  .toggle-btn.on { background: #e94560; }
+  .toggle-btn.on:active { background: #c73650; transform: scale(0.97); }
+  .toggle-btn:disabled { background: #555; cursor: not-allowed; }
+
+  .status-msg {
+    margin-top: 15px;
+    font-size: 13px;
+    padding: 6px 16px;
+    border-radius: 20px;
+  }
+  .status-msg.ok { background: #1a4a1a; color: #4f4; }
+  .status-msg.err { background: #4a1a1a; color: #f44; }
+  .status-msg.wait { background: #4a4a1a; color: #ff4; }
+
+  .reconnect-btn {
+    margin-top: 10px;
+    background: none;
+    border: 1px solid #f44;
+    color: #f44;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup">
+    <h1>CYD Remote</h1>
+    <div class="sub">Controle a distance via Internet</div>
+    <label>Entre l'ID du device :</label>
+    <input type="text" id="devId" maxlength="4" placeholder="a48c" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button class="go" onclick="saveAndConnect()">Connecter</button>
+    <div class="hint">
+      L'ID est affiche en bas de l'ecran du CYD.<br>
+      Exemple : a48c
+    </div>
+  </div>
+
+  <!-- REMOTE SCREEN -->
+  <div id="remote">
+    <div class="top-bar">
+      <div class="conn">
+        <div class="dot" id="dot"></div>
+        <span id="connText">Connexion...</span>
+      </div>
+      <button class="change" onclick="showSetup()">Changer ID</button>
+    </div>
+
+    <div class="device-id">Device : <span id="showId">----</span></div>
+
+    <div class="light" id="light"></div>
+    <button class="toggle-btn off" id="btn" onclick="toggle()" disabled>ON</button>
+
+    <div class="status-msg wait" id="status">Connexion...</div>
+    <button class="reconnect-btn" id="reconBtn" onclick="doConnect()">Reconnecter</button>
+  </div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+  let client = null;
+  let state = false;
+  let devId = '';
+  let reconnectTimer = null;
+
+  // --- UI ---
+  function updateUI(on) {
+    state = on;
+    const light = document.getElementById('light');
+    const btn = document.getElementById('btn');
+    if (on) {
+      light.classList.add('on');
+      btn.textContent = 'OFF';
+      btn.className = 'toggle-btn on';
+    } else {
+      light.classList.remove('on');
+      btn.textContent = 'ON';
+      btn.className = 'toggle-btn off';
+    }
+  }
+
+  function setStatus(text, cls) {
+    document.getElementById('status').textContent = text;
+    document.getElementById('status').className = 'status-msg ' + cls;
+
+    const dot = document.getElementById('dot');
+    dot.className = 'dot ' + cls;
+
+    document.getElementById('connText').textContent =
+      cls === 'ok' ? 'Connecte' : cls === 'err' ? 'Deconnecte' : 'Connexion...';
+
+    document.getElementById('reconBtn').style.display =
+      cls === 'err' ? 'block' : 'none';
+  }
+
+  function showSetup() {
+    if (client) client.end();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    document.getElementById('setup').style.display = 'flex';
+    document.getElementById('remote').style.display = 'none';
+  }
+
+  function showRemote() {
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('remote').style.display = 'flex';
+    document.getElementById('showId').textContent = devId;
+  }
+
+  // --- MQTT ---
+  function toggle() {
+    if (client && client.connected) {
+      client.publish('cyd/' + devId + '/cmd', 'toggle');
+    }
+  }
+
+  function doConnect() {
+    if (client) {
+      try { client.end(true); } catch(e) {}
+    }
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+
+    setStatus('Connexion...', 'wait');
+    document.getElementById('btn').disabled = true;
+
+    const url = 'wss://broker.hivemq.com:8884/mqtt';
+    const opts = {
+      clientId: 'app-cyd-' + devId + '-' + Math.random().toString(16).substr(2, 6),
+      clean: true,
+      connectTimeout: 10000,
+      reconnectPeriod: 5000
+    };
+
+    client = mqtt.connect(url, opts);
+
+    client.on('connect', function() {
+      setStatus('Connecte - ID: ' + devId, 'ok');
+      document.getElementById('btn').disabled = false;
+      client.subscribe('cyd/' + devId + '/state');
+    });
+
+    client.on('message', function(topic, msg) {
+      if (topic === 'cyd/' + devId + '/state') {
+        updateUI(msg.toString() === '1');
+      }
+    });
+
+    client.on('error', function() {
+      setStatus('Erreur de connexion', 'err');
+    });
+
+    client.on('close', function() {
+      setStatus('Deconnecte', 'err');
+      document.getElementById('btn').disabled = true;
+    });
+
+    client.on('reconnect', function() {
+      setStatus('Reconnexion...', 'wait');
+    });
+  }
+
+  // --- Save & Connect ---
+  function saveAndConnect() {
+    devId = document.getElementById('devId').value.trim().toLowerCase();
+    if (devId.length < 2) {
+      document.getElementById('devId').style.borderColor = '#f44';
+      return;
+    }
+    localStorage.setItem('cyd_device_id', devId);
+    showRemote();
+    doConnect();
+  }
+
+  // --- Auto-connect on load ---
+  window.addEventListener('load', function() {
+    // Check URL hash first
+    if (window.location.hash) {
+      devId = window.location.hash.substring(1).toLowerCase();
+      localStorage.setItem('cyd_device_id', devId);
+    } else {
+      devId = localStorage.getItem('cyd_device_id') || '';
+    }
+
+    if (devId.length >= 2) {
+      document.getElementById('devId').value = devId;
+      showRemote();
+      doConnect();
+    }
+  });
+
+  // Reconnect when app comes back to foreground
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && devId && (!client || !client.connected)) {
+      doConnect();
+    }
+  });
+</script>
+</body>
+</html>
