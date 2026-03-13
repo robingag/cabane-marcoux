@@ -141,7 +141,8 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <div class="cd tp"><div class="lb">Temp&#233;rature</div><div class="vl" id="tmp">--.-&#176;C</div></div>
   </div>
   <div class="sec"><span>Tendance dompeur</span></div>
-  <div class="gc">
+  <div class="gc" style="position:relative">
+    <div style="position:absolute;top:6px;right:8px;cursor:pointer;font-size:16px;color:#64748b;z-index:2" onclick="meoToggle()" id="meo-btn" title="Activer/D&#233;sactiver message M&#233;o">&#9776;</div>
     <div class="gl"><span class="ar" id="ar" style="width:100%;text-align:center"></span></div>
     <canvas id="gr" height="90"></canvas>
   </div>
@@ -331,9 +332,13 @@ function dg(){
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
   var a=document.getElementById("ar");
-  if(hist[n-1]>hist[n-2]){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}
-  else{a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.className="ar d"}
+  if(meoOn){
+    if(hist[n-1]>hist[n-2]){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}
+    else{a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.className="ar d"}
+  } else {a.textContent="";a.className="ar"}
 }
+var meoOn=true;
+function meoToggle(){meoOn=!meoOn;document.getElementById("meo-btn").style.color=meoOn?"#f59e0b":"#333";if(!meoOn)document.getElementById("ar").textContent="";if(meoOn&&hist.length>=2)dg()}
 var dmpElapsed=0,dmpTimer=null;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
 function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
