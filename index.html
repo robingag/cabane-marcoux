@@ -320,10 +320,10 @@ function dg(){
   for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
   ctx.setLineDash([]);
   ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
-  ctx.fillText(mx+"s",p.l-4,p.t+7);ctx.fillText(mn+"s",p.l-4,p.t+ch+4);
+  ctx.fillText(mn+"s",p.l-4,p.t+7);ctx.fillText(mx+"s",p.l-4,p.t+ch+4);
   ctx.lineWidth=1.5;ctx.lineJoin="round";
   for(var i=1;i<n;i++){
-    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;
+    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+(hist[i]-mn)*ch/rg;
     ctx.strokeStyle=hist[i]<=hist[i-1]?"#22c55e":"#ef4444";
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
