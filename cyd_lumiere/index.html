@@ -134,7 +134,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <div class="w">
   <div class="sec"><span>Mesures temps r&#233;el</span></div>
   <div class="r">
-    <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div></div>
+    <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div></div>
     <div class="cd tp"><div class="lb">Temp&#233;rature</div><div class="vl" id="tmp">--.-&#176;C</div></div>
   </div>
   <div class="sec"><span>Tendance dompeur</span></div>
@@ -302,7 +302,7 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
-function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=50?"h":l>=25?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
+function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
 function dg(){
   var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
   cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
@@ -331,7 +331,9 @@ function dg(){
   if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar u"}
   else{a.textContent="\u25BC";a.className="ar d"}
 }
-function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
+var dmpElapsed=0,dmpTimer=null;
+function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
+function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
