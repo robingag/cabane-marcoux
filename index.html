@@ -116,6 +116,15 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cal-btn.done{opacity:.5}
 .cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;margin-top:6px;transition:all .2s}
 .cal-close:active{border-color:#1e2d40;color:#475569}
+/* UNIT TOGGLE */
+.unit-toggle{display:flex;gap:4px;justify-content:center;margin-bottom:14px}
+.unit-btn{flex:1;padding:8px 0;border:1px solid #1a2332;border-radius:4px;background:none;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:all .2s}
+.unit-btn.active{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-color:#f59e0b}
+.depth-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #131c28}
+.depth-row span{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:1px}
+.depth-val{font-family:'Courier New',monospace;font-size:13px;color:#22c55e;cursor:pointer;padding:4px 10px;border:1px dashed #1e2d40;border-radius:4px;transition:all .2s}
+.depth-val:active{border-color:#22c55e;background:rgba(34,197,94,.08)}
+.depth-display{font-family:'Courier New',monospace;font-size:36px;color:#22c55e;text-align:center;margin:8px 0;letter-spacing:2px}
 /* STATUS BAR */
 .sb{background:#060810;border:1px solid #111a26;border-radius:4px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:'Courier New',monospace;font-size:10px;color:#4a6080}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:#4a6080;margin-right:8px;display:inline-block;vertical-align:middle}
@@ -195,6 +204,10 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <div class="cal-ov" id="calo">
   <div class="cal-box">
     <div class="cal-ttl">Calibration Bassins</div>
+    <div class="unit-toggle">
+      <button id="unit-pct" onclick="setUnit('pct')" class="unit-btn active">%</button>
+      <button id="unit-in" onclick="setUnit('in')" class="unit-btn">Pouces</button>
+    </div>
     <div class="cal-basin" id="calB1">
       <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
       <div class="cal-info" id="calInfo1">Bas: -- | Haut: --</div>
@@ -202,6 +215,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
         <button class="cal-btn cal-low" onclick="calibrate(1,'low')">Bas Niveau</button>
         <button class="cal-btn cal-high" onclick="calibrate(1,'high')">Haut Niveau</button>
       </div>
+      <div class="depth-row" id="depthRow1" style="display:none"><span>Profondeur:</span><span class="depth-val" id="depthVal1" onclick="editDepth(1)">-- po</span></div>
     </div>
     <div class="cal-basin" id="calB2">
       <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
@@ -210,6 +224,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
         <button class="cal-btn cal-low" onclick="calibrate(2,'low')">Bas Niveau</button>
         <button class="cal-btn cal-high" onclick="calibrate(2,'high')">Haut Niveau</button>
       </div>
+      <div class="depth-row" id="depthRow2" style="display:none"><span>Profondeur:</span><span class="depth-val" id="depthVal2" onclick="editDepth(2)">-- po</span></div>
     </div>
     <div class="cal-basin" id="calB3">
       <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
@@ -218,8 +233,23 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
         <button class="cal-btn cal-low" onclick="calibrate(3,'low')">Bas Niveau</button>
         <button class="cal-btn cal-high" onclick="calibrate(3,'high')">Haut Niveau</button>
       </div>
+      <div class="depth-row" id="depthRow3" style="display:none"><span>Profondeur:</span><span class="depth-val" id="depthVal3" onclick="editDepth(3)">-- po</span></div>
     </div>
     <button class="cal-close" onclick="closeCal()">Fermer</button>
+  </div>
+</div>
+<div class="pin-ov" id="deptho">
+  <div class="pin-box">
+    <div class="pin-ttl">Profondeur Bassin <span id="depth-basin">1</span></div>
+    <div class="depth-display" id="depth-input">0</div>
+    <div style="color:#64748b;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">pouces</div>
+    <div class="pin-pad">
+      <button class="pk" onclick="dpk(1)">1</button><button class="pk" onclick="dpk(2)">2</button><button class="pk" onclick="dpk(3)">3</button>
+      <button class="pk" onclick="dpk(4)">4</button><button class="pk" onclick="dpk(5)">5</button><button class="pk" onclick="dpk(6)">6</button>
+      <button class="pk" onclick="dpk(7)">7</button><button class="pk" onclick="dpk(8)">8</button><button class="pk" onclick="dpk(9)">9</button>
+      <button class="pk del" onclick="dpkd()">&#9003;</button><button class="pk" onclick="dpk(0)">0</button><button class="pk" onclick="saveDepth()" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:14px">OK</button>
+    </div>
+    <button class="pin-cancel" onclick="cancelDepth()">Annuler</button>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
@@ -232,6 +262,8 @@ var rawBasin={1:0,2:0,3:0};
 var calData={1:{low:null,high:null},2:{low:null,high:null},3:{low:null,high:null}};
 document.getElementById("did").textContent=id;
 (function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
+var basinUnit="pct",basinDepth={1:0,2:0,3:0},basinPct={1:0,2:0,3:0};
+(function(){try{var u=localStorage.getItem("unit_"+id);if(u)basinUnit=u;var d=localStorage.getItem("depth_"+id);if(d)basinDepth=JSON.parse(d)}catch(e){}})();
 
 function slInit(){
   var hdl=document.getElementById("slh"),trk=document.getElementById("slt");
@@ -295,7 +327,7 @@ function chkPin(){
     if(pinMode==="vac")resetSlider();
   }
 }
-function openCal(){updateCalDisplay();document.getElementById("calo").className="cal-ov show"}
+function openCal(){updateCalDisplay();syncUnitUI();document.getElementById("calo").className="cal-ov show"}
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=3;n++){
@@ -314,7 +346,15 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
-function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
+function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=(basinDepth[n]*l/100).toFixed(1);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
+function syncUnitUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthRow"+n).style.display=basinUnit==="in"?"flex":"none";document.getElementById("depthVal"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po"}}
+function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncUnitUI();for(var n=1;n<=3;n++)sba(n,basinPct[n])}
+var depthEditBasin=0,depthCode="";
+function editDepth(n){depthEditBasin=n;depthCode=basinDepth[n]>0?String(basinDepth[n]):"";document.getElementById("depth-basin").textContent=n;document.getElementById("depth-input").textContent=depthCode||"0";document.getElementById("deptho").className="pin-ov show"}
+function dpk(d){if(depthCode.length>=3)return;depthCode+=d;document.getElementById("depth-input").textContent=depthCode}
+function dpkd(){depthCode=depthCode.slice(0,-1);document.getElementById("depth-input").textContent=depthCode||"0"}
+function saveDepth(){var v=parseInt(depthCode)||0;basinDepth[depthEditBasin]=v;try{localStorage.setItem("depth_"+id,JSON.stringify(basinDepth))}catch(e){}document.getElementById("deptho").className="pin-ov";document.getElementById("depthVal"+depthEditBasin).textContent=v>0?v+" po":"-- po";sba(depthEditBasin,basinPct[depthEditBasin])}
+function cancelDepth(){document.getElementById("deptho").className="pin-ov"}
 function dg(){
   var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
   cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
