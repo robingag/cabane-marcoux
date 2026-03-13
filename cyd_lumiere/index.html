@@ -44,7 +44,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 /* GRAPH */
 .gc{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #3b82f6;border-radius:4px;padding:10px 10px 8px;margin-bottom:16px}
 .gc .gl{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-.gc .ar{font-size:16px;font-weight:700;line-height:1}
+.gc .ar{font-size:11px;font-weight:700;line-height:1}
 .gc .ar.u{color:#ef4444}
 .gc .ar.d{color:#22c55e}
 .gc canvas{width:100%;height:90px;display:block;border-radius:2px}
@@ -328,8 +328,8 @@ function dg(){
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
   var a=document.getElementById("ar");
-  if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar u"}
-  else{a.textContent="\u25BC";a.className="ar d"}
+  if(hist[n-1]>hist[0]){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}
+  else{a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.className="ar d"}
 }
 var dmpElapsed=0,dmpTimer=null;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
