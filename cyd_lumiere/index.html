@@ -405,8 +405,8 @@ function setMeo(v){meoOn=v;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("
 function syncMeoUI(){document.getElementById("meo-icon").innerHTML=meoOn?"&#9679;":"&#9675;";document.getElementById("meo-status").textContent=meoOn?"ON":"OFF";document.getElementById("meo-status").style.color=meoOn?"#22c55e":"#64748b"}
 var dmpElapsed=0,dmpTimer=null,idleTimer=null;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
-function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id)}catch(e){}dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
-function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();resetIdleTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();try{localStorage.setItem("hist_"+id,JSON.stringify(hist))}catch(e){}dg()}}}
+function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
+function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();resetIdleTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
@@ -433,7 +433,7 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","temp","humidity","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/depth","settings/meo","settings/bnames","settings/sync"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/depth","settings/meo","settings/bnames","settings/hist","settings/sync"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
     });
     c.on("message",function(tp,m){
@@ -455,7 +455,8 @@ function go(){
       if(tp===p+"settings/depth"){try{basinDepth=JSON.parse(v);localStorage.setItem("depth_"+id,v);syncDepthUI();for(var i=1;i<=3;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=3;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
-      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true})}
+      if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
+      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
     c.on("close",function(){ss("Deconnecte","er")});
