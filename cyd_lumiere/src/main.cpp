@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <qrcode.h>
+#include <NimBLEDevice.h>
 
 TFT_eSPI tft = TFT_eSPI();
 WebServer server(80);
@@ -137,6 +138,12 @@ const char* VACUUM_PIN_CODE = "777";
 // Sensor data
 String dompeurTime = "--:--";
 float temperature = 0.0;
+float humidity = 0.0;
+int bleBattery = -1;
+unsigned long lastBleScan = 0;
+const unsigned long BLE_SCAN_INTERVAL = 30000; // 30 sec
+bool bleInitDone = false;
+String mqttTopicHumidity;
 int basin1 = 0;  // 0-100%
 int basin2 = 0;
 int basin3 = 0;
@@ -246,6 +253,7 @@ void handleInfoTouch(int tx, int ty);
 void drawVacuumBtn();
 void drawDompeurCard();
 void drawTempCard();
+void bleScanInkbird();
 void drawTrendGraph();
 void drawBasinCards();
 
@@ -255,6 +263,7 @@ void publishState() {
     mqtt.publish(mqttTopicState.c_str(), lightOn ? "1" : "0", true);
     mqtt.publish(mqttTopicDompeur.c_str(), dompeurTime.c_str(), true);
     mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
+    mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
     mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
     mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
     mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
@@ -494,11 +503,14 @@ void drawTempCard() {
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
-  tft.drawString("TEMPERATURE", cx + 8, cy + 5);
+  tft.drawString("TEMP / HUMID", cx + 8, cy + 5);
   tft.setTextSize(2);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_CYAN, C_CARD);
   String tempStr = String(temperature, 1) + "C";
+  if (humidity > 0) {
+    tempStr += " " + String((int)humidity) + "%";
+  }
   tft.drawString(tempStr.c_str(), cx + cw / 2, cy + 24);
 }
 
@@ -1617,6 +1629,60 @@ void handleToggle() {
   server.send(200, "application/json", json);
 }
 
+
+// ---- BLE Inkbird IBS-TH2 ----
+class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
+  void onResult(NimBLEAdvertisedDevice* device) {
+    // IBS-TH2 advertise comme "sps"
+    std::string devName = device->getName();
+    if (devName == "sps") {
+      // Parser manufacturer data
+      if (device->haveManufacturerData()) {
+        std::string mfData = device->getManufacturerData();
+        if (mfData.length() >= 9) {
+          // UUID (2 premiers bytes, little endian) = temperature * 100
+          int16_t rawTemp = (uint8_t)mfData[0] | ((uint8_t)mfData[1] << 8);
+          float temp = rawTemp / 100.0f;
+          // Humidity: bytes 2-3 (little endian) / 100
+          uint16_t rawHum = (uint8_t)mfData[2] | ((uint8_t)mfData[3] << 8);
+          float hum = rawHum / 100.0f;
+          // Battery: byte 7
+          int bat = (uint8_t)mfData[7];
+
+          // Valider les donnees
+          if (temp > -40.0 && temp < 80.0 && hum >= 0 && hum <= 100) {
+            temperature = temp;
+            humidity = hum;
+            bleBattery = bat;
+            Serial.printf("BLE Inkbird: %.1fC, %.1f%%, bat=%d%%\n", temp, hum, bat);
+          }
+        }
+      }
+    }
+  }
+};
+
+InkbirdScanCallback inkbirdCallback;
+
+void bleInitInkbird() {
+  NimBLEDevice::init("CYD");
+  NimBLEDevice::setPower(ESP_PWR_LVL_P3);
+  NimBLEScan* pScan = NimBLEDevice::getScan();
+  pScan->setAdvertisedDeviceCallbacks(&inkbirdCallback, true);
+  pScan->setActiveScan(true);
+  pScan->setInterval(100);
+  pScan->setWindow(99);
+  bleInitDone = true;
+  Serial.println("BLE NimBLE init OK - scan Inkbird IBS-TH2");
+}
+
+void bleScanInkbird() {
+  if (!bleInitDone) return;
+  NimBLEScan* pScan = NimBLEDevice::getScan();
+  // Scan async pendant 5 secondes
+  pScan->start(5, false);
+}
+
 // ---- Setup ----
 void setup() {
   Serial.begin(115200);
@@ -1633,6 +1699,7 @@ void setup() {
   mqttTopicCmd = "cyd/" + deviceId + "/cmd";
   mqttTopicDompeur = "cyd/" + deviceId + "/dompeur";
   mqttTopicTemp = "cyd/" + deviceId + "/temp";
+  mqttTopicHumidity = "cyd/" + deviceId + "/humidity";
   mqttTopicBasin1 = "cyd/" + deviceId + "/basin1";
   mqttTopicBasin2 = "cyd/" + deviceId + "/basin2";
   mqttTopicBasin3 = "cyd/" + deviceId + "/basin3";
@@ -1679,6 +1746,9 @@ void setup() {
   // MQTT setup
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
+
+  // BLE Inkbird init
+  bleInitInkbird();
 
   // Web server routes
   server.on("/", handleRoot);
@@ -1781,6 +1851,19 @@ void loop() {
       tft.setTextColor(TFT_WHITE, TFT_BLACK);
       tft.drawString("Touche pour revenir", SW / 2, SH / 2 + 15);
     }
+  }
+
+  // BLE scan periodique Inkbird
+  if (millis() - lastBleScan >= BLE_SCAN_INTERVAL) {
+    lastBleScan = millis();
+    bleScanInkbird();
+    // Publier temp + humidity via MQTT
+    if (mqtt.connected()) {
+      mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
+      mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
+    }
+    // Rafraichir ecran
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawTempCard();
   }
 
   // Lecture periodique capteur ultrasonique (bassin 1 seulement)

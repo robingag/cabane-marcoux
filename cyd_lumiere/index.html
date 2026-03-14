@@ -55,15 +55,17 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 /* BASINS */
 .bc{background:#0c1018;border:1px solid #1a2332;border-radius:4px;padding:14px 14px 12px;margin-bottom:16px;position:relative}
 .bc-hd{font-size:8px;color:#475569;text-transform:uppercase;letter-spacing:3px;margin-bottom:14px;display:flex;justify-content:space-between}
-.br{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.br:last-child{margin:0}
-.br .nl{font-size:10px;color:#94a3b8;width:62px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
-.br .bw{flex:1;background:#080a0e;border:1px solid #131c28;border-radius:2px;height:20px;overflow:hidden}
-.br .bf{height:100%;border-radius:1px;transition:width .5s ease}
-.bf.h{background:linear-gradient(90deg,#991b1b,#ef4444);box-shadow:inset 0 0 8px rgba(239,68,68,.2)}
-.bf.m{background:linear-gradient(90deg,#92400e,#f59e0b);box-shadow:inset 0 0 8px rgba(245,158,11,.2)}
-.bf.l{background:linear-gradient(90deg,#14532d,#22c55e);box-shadow:inset 0 0 8px rgba(34,197,94,.2)}
-.br .pc{font-family:'Courier New',monospace;font-size:11px;width:36px;text-align:right;color:#7a8fa8;font-weight:700}
+.tanks{display:flex;gap:12px;justify-content:center}
+.tank{display:flex;flex-direction:column;align-items:center;flex:1;max-width:120px}
+.tank .nl{font-size:9px;color:#94a3b8;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.tank .tw{position:relative;width:100%;height:120px;background:#080a0e;border:1px solid #1e2d40;border-radius:6px;overflow:hidden}
+.tank .tf{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 5px 5px;transition:height .5s ease}
+.tf.h{background:linear-gradient(0deg,#991b1b,#ef4444);box-shadow:inset 0 0 12px rgba(239,68,68,.3)}
+.tf.m{background:linear-gradient(0deg,#92400e,#f59e0b);box-shadow:inset 0 0 12px rgba(245,158,11,.3)}
+.tf.l{background:linear-gradient(0deg,#14532d,#22c55e);box-shadow:inset 0 0 12px rgba(34,197,94,.3)}
+.tank .tw::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(255,255,255,.03) 23px,rgba(255,255,255,.03) 24px);pointer-events:none;z-index:1}
+.tank .tw::after{content:'';position:absolute;top:0;left:4px;width:6px;bottom:0;background:linear-gradient(90deg,rgba(255,255,255,.04),transparent);pointer-events:none;z-index:1}
+.tank .pc{font-family:'Courier New',monospace;font-size:13px;color:#e2e8f0;font-weight:700;margin-top:6px;text-shadow:0 0 8px rgba(255,255,255,.1)}
 /* CALIBRATION GEAR */
 .cal-gear{background:none;border:none;color:#475569;font-size:28px;cursor:pointer;padding:2px 0;transition:color .2s;line-height:1}
 .cal-gear:active{color:#f59e0b}
@@ -158,9 +160,11 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   <div class="sec"><span>Niveau des bassins</span></div>
   <div class="bc">
     <div class="bc-hd"><span class="ar" id="ar" style="flex:1;font-size:10px"></span><div style="display:flex;align-items:center;gap:2px"><div style="position:relative"><div style="cursor:pointer;font-size:14px;color:#64748b;padding:2px 4px" onclick="tgMeoMenu()" id="meo-btn">&#9776;</div><div id="meo-dd" style="display:none;position:absolute;right:0;top:24px;background:#0d1520;border:1px solid #1e2d40;border-radius:6px;padding:6px 0;min-width:130px;box-shadow:0 4px 16px rgba(0,0,0,.6);z-index:10"><div class="meo-opt" onclick="setMeo(true)" id="meo-on" style="padding:8px 14px;font-size:12px;cursor:pointer;color:#22c55e;display:flex;align-items:center;gap:6px">&#9679; Message ON</div><div class="meo-opt" onclick="setMeo(false)" id="meo-off" style="padding:8px 14px;font-size:12px;cursor:pointer;color:#64748b;display:flex;align-items:center;gap:6px">&#9675; Message OFF</div></div></div><button class="cal-gear" onclick="showCalPin()">&#9881;</button></div></div>
-    <div class="br"><span class="nl">Bassin 1</span><div class="bw"><div class="bf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
-    <div class="br"><span class="nl">Bassin 2</span><div class="bw"><div class="bf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
-    <div class="br"><span class="nl">Bassin 3</span><div class="bw"><div class="bf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
+    <div class="tanks">
+      <div class="tank"><span class="nl">B1</span><div class="tw"><div class="tf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
+      <div class="tank"><span class="nl">B2</span><div class="tw"><div class="tf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
+      <div class="tank"><span class="nl">B3</span><div class="tw"><div class="tf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
+    </div>
   </div>
   <div class="sec"><span>Contr&#244;le vacuum</span></div>
   <div class="sl-wrap">
@@ -342,7 +346,7 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
-function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
+function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.height=l+"%";f.className="tf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
 function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthTxt"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po";document.getElementById("depthVal"+n).parentElement.style.display=basinUnit==="in"?"flex":"none"}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=3;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
 var depthEditBasin=0,depthCode="";
@@ -383,9 +387,10 @@ var meoOn=true;
 function tgMeoMenu(){var d=document.getElementById("meo-dd");d.style.display=d.style.display==="none"?"block":"none"}
 function setMeo(v){meoOn=v;document.getElementById("meo-dd").style.display="none";document.getElementById("meo-btn").style.color=v?"#f59e0b":"#64748b";document.getElementById("meo-on").style.color=v?"#22c55e":"#64748b";document.getElementById("meo-on").innerHTML=v?"&#9679; Message ON":"&#9675; Message ON";document.getElementById("meo-off").style.color=v?"#64748b":"#ef4444";document.getElementById("meo-off").innerHTML=v?"&#9675; Message OFF":"&#9679; Message OFF";updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
 document.addEventListener("click",function(e){if(!e.target.closest("#meo-btn")&&!e.target.closest("#meo-dd"))document.getElementById("meo-dd").style.display="none"})
-var dmpElapsed=0,dmpTimer=null;
+var dmpElapsed=0,dmpTimer=null,idleTimer=null;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
-function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();try{localStorage.setItem("hist_"+id,JSON.stringify(hist))}catch(e){}dg()}}}
+function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id)}catch(e){}dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
+function od(v){document.getElementById("dmp").textContent=v;startDmpTimer();resetIdleTimer();var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();try{localStorage.setItem("hist_"+id,JSON.stringify(hist))}catch(e){}dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
