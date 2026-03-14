@@ -23,7 +23,9 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .dt.w{background:#f59e0b;box-shadow:0 0 7px rgba(245,158,11,.6)}
 /* QR PANEL */
 .mn-panel{background:#060810;border-bottom:1px solid #1a2332;padding:0 16px;text-align:center;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
-.mn-panel.open{max-height:320px;padding:20px 16px}
+.mn-panel.open{max-height:500px;padding:20px 16px}
+.mn-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:4px 0;border-radius:8px;cursor:pointer;font-size:13px;color:#e2e8f0;background:#0d1520;border:1px solid #1e2d40;transition:background .2s}
+.mn-item:hover,.mn-item:active{background:#1e2d40}
 .mn-title{font-size:8px;color:#f59e0b;text-transform:uppercase;letter-spacing:3px;margin-bottom:14px}
 .mn-qr{display:inline-block;background:#fff;padding:10px;border-radius:4px;margin-bottom:10px;box-shadow:0 0 24px rgba(245,158,11,.08)}
 .mn-qr img{display:block;width:160px;height:160px}
@@ -105,6 +107,9 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cal-box{background:#0c1018;border:1px solid #1a2332;border-top:2px solid #3b82f6;border-radius:6px;padding:24px 20px;width:320px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.9)}
 .cal-ttl{font-size:8px;color:#3b82f6;text-transform:uppercase;letter-spacing:3px;margin-bottom:18px;text-align:center}
 .cal-basin{background:#080a0e;border:1px solid #131c28;border-radius:4px;padding:12px;margin-bottom:10px}
+.cal-namerow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.cal-nameinput{background:#080a0e;border:1px solid #1e2d40;border-radius:4px;color:#e2e8f0;font-size:13px;padding:4px 8px;width:100px;outline:none;font-family:inherit}
+.cal-nameinput:focus{border-color:#3b82f6}
 .cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .cal-name{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
 .cal-raw{font-family:'Courier New',monospace;font-size:12px;color:#f59e0b}
@@ -142,7 +147,10 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   </div>
 </div>
 <div class="mn-panel" id="mnp">
-  <div class="mn-title">Acc&#232;s Remote &mdash; QR Code</div>
+  <div class="mn-title">Menu</div>
+  <div class="mn-item" onclick="tgMeoFromMenu()"><span id="meo-icon">&#9675;</span> Messages M&#233;o <span id="meo-status" style="margin-left:auto;font-size:11px;color:#64748b">OFF</span></div>
+  <div style="border-top:1px solid #1e2d40;margin:8px 0"></div>
+  <div class="mn-title" style="font-size:10px">Acc&#232;s Remote</div>
   <div class="mn-qr"><img id="qrimg" src="" alt="QR"></div>
   <div class="mn-url" id="qrurl"></div>
 </div>
@@ -159,7 +167,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   </div>
   <div class="sec"><span>Niveau des bassins</span></div>
   <div class="bc">
-    <div class="bc-hd"><span class="ar" id="ar" style="flex:1;font-size:10px"></span><div style="display:flex;align-items:center;gap:2px"><div style="position:relative"><div style="cursor:pointer;font-size:14px;color:#64748b;padding:2px 4px" onclick="tgMeoMenu()" id="meo-btn">&#9776;</div><div id="meo-dd" style="display:none;position:absolute;right:0;top:24px;background:#0d1520;border:1px solid #1e2d40;border-radius:6px;padding:6px 0;min-width:130px;box-shadow:0 4px 16px rgba(0,0,0,.6);z-index:10"><div class="meo-opt" onclick="setMeo(true)" id="meo-on" style="padding:8px 14px;font-size:12px;cursor:pointer;color:#22c55e;display:flex;align-items:center;gap:6px">&#9679; Message ON</div><div class="meo-opt" onclick="setMeo(false)" id="meo-off" style="padding:8px 14px;font-size:12px;cursor:pointer;color:#64748b;display:flex;align-items:center;gap:6px">&#9675; Message OFF</div></div></div><button class="cal-gear" onclick="showCalPin()">&#9881;</button></div></div>
+    <div class="bc-hd"><span class="ar" id="ar" style="flex:1;font-size:10px"></span><button class="cal-gear" onclick="showCalPin()">&#9881;</button></div>
     <div class="tanks">
       <div class="tank"><span class="nl">B1</span><div class="tw"><div class="tf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
       <div class="tank"><span class="nl">B2</span><div class="tw"><div class="tf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
@@ -206,6 +214,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <button id="unit-in" onclick="setUnit('in')" class="unit-btn">Pouces</button>
     </div>
     <div class="cal-basin" id="calB1">
+      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"></div>
       <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
       <div class="cal-info" id="calInfo1">Bas: -- | Haut: --</div>
       <div class="cal-btns">
@@ -215,6 +224,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <div class="depth-row"><span>Max:</span><span class="depth-val" id="depthVal1" onclick="editDepth(1)"><span id="depthTxt1">-- po</span></span></div>
     </div>
     <div class="cal-basin" id="calB2">
+      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname2" value="B2" onchange="saveBasinName(2)" maxlength="10" spellcheck="false"></div>
       <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
       <div class="cal-info" id="calInfo2">Bas: -- | Haut: --</div>
       <div class="cal-btns">
@@ -224,6 +234,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <div class="depth-row"><span>Max:</span><span class="depth-val" id="depthVal2" onclick="editDepth(2)"><span id="depthTxt2">-- po</span></span></div>
     </div>
     <div class="cal-basin" id="calB3">
+      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname3" value="B3" onchange="saveBasinName(3)" maxlength="10" spellcheck="false"></div>
       <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
       <div class="cal-info" id="calInfo3">Bas: -- | Haut: --</div>
       <div class="cal-btns">
@@ -261,6 +272,7 @@ document.getElementById("did").textContent=id;
 (function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
 var basinUnit="pct",basinDepth={1:0,2:0,3:0},basinPct={1:0,2:0,3:0};
 var curTemp="--.-",curHum=0;
+var basinNames={1:"B1",2:"B2",3:"B3"};
 (function(){try{var u=localStorage.getItem("unit_"+id);if(u)basinUnit=u;var d=localStorage.getItem("depth_"+id);if(d)basinDepth=JSON.parse(d)}catch(e){}})();
 
 function slInit(){
@@ -350,6 +362,8 @@ function sv(on){vacOn=on;updSlider()}
 function updTH(){var s=curTemp+"&deg;C";if(curHum>0)s+=" &nbsp;"+curHum.toFixed(0)+"%";document.getElementById("tmp").innerHTML=s}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.height=l+"%";f.className="tf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
 function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthTxt"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po";document.getElementById("depthVal"+n).parentElement.style.display=basinUnit==="in"?"flex":"none"}}
+function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
+function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=3;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=3;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
 var depthEditBasin=0,depthCode="";
 function editDepth(n){depthEditBasin=n;depthCode=basinDepth[n]>0?String(basinDepth[n]):"";document.getElementById("depth-basin").textContent=n;document.getElementById("depth-input").textContent=depthCode||"0";document.getElementById("deptho").className="pin-ov show"}
@@ -386,9 +400,9 @@ function dg(){
 }
 function updateMeo(){var a=document.getElementById("ar");if(!meoOn||hist.length<4){a.textContent="";a.className="ar";return}var r=hist.slice(-3),o=hist.slice(-6,-3);if(o.length<2)o=hist.slice(0,-3);if(o.length<1){a.textContent="";a.className="ar";return}var avgR=r.reduce(function(s,v){return s+v},0)/r.length;var avgO=o.reduce(function(s,v){return s+v},0)/o.length;var diff=(avgR-avgO)/avgO*100;if(diff>10){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.className="ar u"}else if(diff<-10){a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.className="ar d"}else{a.textContent="";a.className="ar"}}
 var meoOn=true;
-function tgMeoMenu(){var d=document.getElementById("meo-dd");d.style.display=d.style.display==="none"?"block":"none"}
-function setMeo(v){meoOn=v;document.getElementById("meo-dd").style.display="none";document.getElementById("meo-btn").style.color=v?"#f59e0b":"#64748b";document.getElementById("meo-on").style.color=v?"#22c55e":"#64748b";document.getElementById("meo-on").innerHTML=v?"&#9679; Message ON":"&#9675; Message ON";document.getElementById("meo-off").style.color=v?"#64748b":"#ef4444";document.getElementById("meo-off").innerHTML=v?"&#9675; Message OFF":"&#9679; Message OFF";updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
-document.addEventListener("click",function(e){if(!e.target.closest("#meo-btn")&&!e.target.closest("#meo-dd"))document.getElementById("meo-dd").style.display="none"})
+function tgMeoFromMenu(){meoOn=!meoOn;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",meoOn?"1":"0",{retain:true})}
+function setMeo(v){meoOn=v;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
+function syncMeoUI(){document.getElementById("meo-icon").innerHTML=meoOn?"&#9679;":"&#9675;";document.getElementById("meo-status").textContent=meoOn?"ON":"OFF";document.getElementById("meo-status").style.color=meoOn?"#22c55e":"#64748b"}
 var dmpElapsed=0,dmpTimer=null,idleTimer=null;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id)}catch(e){}dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
@@ -403,7 +417,7 @@ function ss(t,cl){
 function tgMenu(){
   var p=document.getElementById("mnp");var open=p.classList.toggle("open");
   if(open&&!p.dataset.loaded){
-    var url="https://robingag.github.io/cabane-marcoux/?id="+id;
+    var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?id="+id;
     document.getElementById("qrurl").textContent=url;
     document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);
     p.dataset.loaded="1";
@@ -419,7 +433,7 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","temp","humidity","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/depth","settings/meo","settings/sync"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/depth","settings/meo","settings/bnames","settings/sync"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
     });
     c.on("message",function(tp,m){
@@ -439,14 +453,15 @@ function go(){
       if(tp===p+"basin3/cal"){try{calData[3]=JSON.parse(v);saveCal();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}
       if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}syncDepthUI();for(var i=1;i<=3;i++)sba(i,basinPct[i])}
       if(tp===p+"settings/depth"){try{basinDepth=JSON.parse(v);localStorage.setItem("depth_"+id,v);syncDepthUI();for(var i=1;i<=3;i++)sba(i,basinPct[i])}catch(e){}}
-      if(tp===p+"settings/meo"){meoOn=v==="1";document.getElementById("meo-btn").style.color=meoOn?"#f59e0b":"#64748b";updateMeo()}
-      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true})}
+      if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
+      if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=3;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
+      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true})}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
     c.on("close",function(){ss("Deconnecte","er")});
   }tc();
 }
-slInit();go();dg();
+slInit();loadBasinNames();go();dg();
 window.addEventListener("resize",dg);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
 </script></body></html>
