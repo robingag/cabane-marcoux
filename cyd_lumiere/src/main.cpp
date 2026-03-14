@@ -25,6 +25,7 @@ String mqttTopicTemp;    // cyd/{id}/temp
 String mqttTopicBasin1;  // cyd/{id}/basin1
 String mqttTopicBasin2;  // cyd/{id}/basin2
 String mqttTopicBasin3;  // cyd/{id}/basin3
+String mqttTopicCal;     // cyd/{id}/cmd/cal
 const char* MQTT_BROKER = "broker.hivemq.com";
 const int MQTT_PORT = 1883;
 unsigned long lastMqttRetry = 0;
@@ -41,11 +42,22 @@ unsigned long lastMqttRetry = 0;
 
 // JSN-SR04T ultrasonic sensor
 // Bassin 1: 2-wire on GPIO 22 (CN1/P3 connector)
-#define US1_PIN  22
+// JSN-SR04T ultrasonic sensor
+// Bassin 1: 4-wire on GPIO 22 (Trig) + GPIO 35 (Echo) - P3 connector
+#define US1_TRIG 22
+#define US1_ECHO 35
+
+// Simulateur de pulses dompeur (P3 connecteur)
+#define SIM_PULSE_PIN 1  // GPIO 1 = TX sur connecteur P1
 
 volatile unsigned long lsLastEdge = 0;
 volatile unsigned long lsCycleMs = 0;
 volatile bool lsNewCycle = false;
+
+// Simulation pulses: true=actif, false=capteur reel
+bool simPulse = true;
+unsigned long simNextToggle = 0;
+bool simState = false;
 
 void IRAM_ATTR limitSwitchISR() {
   unsigned long now = millis();
@@ -154,19 +166,15 @@ unsigned long lastUltrasonicRead = 0;
 const unsigned long US_INTERVAL = 500; // lecture chaque 500ms
 
 // Lecture 2 fils: meme pin pour trig et echo
-long readUltrasonic2Wire(int pin) {
-  // Envoyer pulse trigger
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, LOW);
+long readUltrasonic4Wire(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
-  digitalWrite(pin, HIGH);
+  digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
-  digitalWrite(pin, LOW);
-  // Passer en input pour lire l'echo
-  pinMode(pin, INPUT);
-  long duration = pulseIn(pin, HIGH, 30000); // timeout 30ms
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 30000);
   if (duration == 0) return -1;
-  return duration / 58; // distance en cm
+  return duration / 58;
 }
 
 // Convertir distance en pourcentage avec calibration 2 points
@@ -305,6 +313,53 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.printf(">>> MQTT: Basin3 = %d%%\n", basin3);
     if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
   }
+  // Calibration command from MQTT dashboard
+  else if (String(topic) == mqttTopicCal) {
+    Serial.printf(">>> MQTT: cmd/cal = %s\n", msg.c_str());
+    // Parse JSON: {"basin":1,"point":"low"} or {"basin":1,"point":"high"}
+    int bIdx = msg.indexOf("\"basin\":");
+    int pIdx = msg.indexOf("\"point\":");
+    if (bIdx >= 0 && pIdx >= 0) {
+      int basin = msg.substring(bIdx + 8, msg.indexOf(',', bIdx)).toInt();
+      String point = "";
+      int pStart = msg.indexOf('"', pIdx + 8) + 1;
+      int pEnd = msg.indexOf('"', pStart);
+      if (pStart > 0 && pEnd > pStart) point = msg.substring(pStart, pEnd);
+
+      if (basin >= 1 && basin <= 3) {
+        int idx = basin - 1;
+        if (point == "low") {
+          calLow[idx] = rawBasin[idx];
+          Serial.printf("CAL MQTT: Basin %d LOW = %d\n", basin, rawBasin[idx]);
+        } else if (point == "high") {
+          calHigh[idx] = rawBasin[idx];
+          Serial.printf("CAL MQTT: Basin %d HIGH = %d\n", basin, rawBasin[idx]);
+        }
+        // Save to NVS
+        Preferences calPrefs;
+        if (calPrefs.begin("calib", false)) {
+          String kl = "lo" + String(idx);
+          String kh = "hi" + String(idx);
+          calPrefs.putInt(kl.c_str(), calLow[idx]);
+          calPrefs.putInt(kh.c_str(), calHigh[idx]);
+          calPrefs.end();
+        }
+        // Publish cal data back to MQTT
+        String calJson = "{\"low\":" + (calLow[idx] >= 0 ? String(calLow[idx]) : String("null")) +
+                         ",\"high\":" + (calHigh[idx] >= 0 ? String(calHigh[idx]) : String("null")) + "}";
+        String calTopic = "cyd/" + deviceId + "/basin" + String(basin) + "/cal";
+        mqtt.publish(calTopic.c_str(), calJson.c_str(), true);
+        Serial.printf("CAL MQTT: published %s = %s\n", calTopic.c_str(), calJson.c_str());
+
+        // Publish raw value
+        String rawTopic = "cyd/" + deviceId + "/basin" + String(basin) + "/raw";
+        mqtt.publish(rawTopic.c_str(), String(rawBasin[idx]).c_str(), true);
+
+        // Redraw if on main screen
+        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+      }
+    }
+  }
 }
 
 void mqttConnect() {
@@ -326,6 +381,7 @@ void mqttConnect() {
     mqtt.subscribe(mqttTopicBasin1.c_str());
     mqtt.subscribe(mqttTopicBasin2.c_str());
     mqtt.subscribe(mqttTopicBasin3.c_str());
+    mqtt.subscribe(mqttTopicCal.c_str());
     publishState();
   } else {
     Serial.printf("MQTT: echec (rc=%d)\n", mqtt.state());
@@ -408,17 +464,26 @@ void drawHeader() {
 }
 
 void drawDompeurCard() {
-  int cx = 4, cy = 28, cw = SW - 8, ch = 56;
+  int cx = 4, cy = 28, cw = SW - 8, ch = 72;
   tft.fillRoundRect(cx, cy, cw, ch, 6, C_CARD);
   tft.drawRoundRect(cx, cy, cw, ch, 6, C_BORDER);
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
   tft.drawString("DOMPEUR", cx + 10, cy + 6);
-  tft.setTextSize(4);
+  tft.setTextSize(3);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_CYAN, C_CARD);
-  tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 36);
+  tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
+  // Compteur temps reel depuis dernier front
+  unsigned long elapsed = (lsLastEdge > 0) ? (millis() - lsLastEdge) / 1000 : 0;
+  int eMin = elapsed / 60;
+  int eSec = elapsed % 60;
+  char eBuf[8];
+  snprintf(eBuf, sizeof(eBuf), "%02d:%02d", eMin, eSec);
+  tft.setTextSize(2);
+  tft.setTextColor(C_GREEN, C_CARD);
+  tft.drawString(eBuf, cx + cw / 2, cy + 58);
 }
 
 void drawTempCard() {
@@ -526,8 +591,8 @@ void drawBasinBar(int y, const char* name, int level) {
   int fillW = (barW - 2) * level / 100;
   if (fillW > 0) {
     uint16_t bc = C_GREEN;
-    if (level >= 50) bc = C_RED;
-    else if (level >= 25) bc = C_YELLOW;
+    if (level >= 91) bc = C_RED;
+    else if (level >= 61) bc = C_YELLOW;
     tft.fillRect(barX + 1, y + 3, fillW, barH - 2, bc);
   }
   // Percentage (white, textSize 2)
@@ -1511,7 +1576,7 @@ body{font-family:Arial;background:#0a0a1a;color:#fff;user-select:none}
 var c,id=new URLSearchParams(window.location.search).get("id")||"a48c",hist=[];
 document.getElementById("did").textContent=id;
 function sv(on){document.getElementById("vb").className="vb "+(on?"on":"off");document.getElementById("vd").className="vd"+(on?" a":"");document.getElementById("vt").textContent=on?"VACUUM OFF":"VACUUM ON"}
-function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=50?"h":l>=25?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
+function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=91?"h":l>=61?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
 function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);var W=cv.offsetWidth,H=90;ctx.clearRect(0,0,W,H);ctx.fillStyle="#111";ctx.fillRect(0,0,W,H);if(hist.length<2){ctx.fillStyle="#444";ctx.font="12px Arial";ctx.textAlign="center";ctx.fillText("En attente...",W/2,H/2+4);document.getElementById("ar").textContent="";return}var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;if(rg<10){mn-=5;mx+=5;rg=mx-mn}var p={l:30,r:8,t:6,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;ctx.strokeStyle="#2a2a4e";ctx.setLineDash([3,3]);for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}ctx.setLineDash([]);ctx.fillStyle="#556";ctx.font="9px monospace";ctx.textAlign="right";ctx.fillText(mx+"s",p.l-3,p.t+7);ctx.fillText(mn+"s",p.l-3,p.t+ch+3);ctx.lineWidth=2;ctx.lineJoin="round";for(var i=1;i<n;i++){var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;ctx.strokeStyle=hist[i]>=hist[i-1]?"#4f4":"#f44";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}var a=document.getElementById("ar");if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar d"}else{a.textContent="\u25BC";a.className="ar u"}}
 function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
 function ss(t,cl){document.getElementById("st").textContent=t;document.getElementById("dt").className="dt "+cl}
@@ -1575,7 +1640,7 @@ void setup() {
   String mqttTopicRaw1 = "cyd/" + deviceId + "/raw1";
   String mqttTopicRaw2 = "cyd/" + deviceId + "/raw2";
   String mqttTopicRaw3 = "cyd/" + deviceId + "/raw3";
-  String mqttTopicCal = "cyd/" + deviceId + "/cmd/cal";
+  mqttTopicCal = "cyd/" + deviceId + "/cmd/cal";
   Serial.printf("Device ID: %s\n", deviceId.c_str());
   Serial.printf("MQTT topics: %s, %s\n", mqttTopicState.c_str(), mqttTopicCmd.c_str());
 
@@ -1589,7 +1654,16 @@ void setup() {
   pinMode(LIMIT_SW_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(LIMIT_SW_PIN), limitSwitchISR, CHANGE);
 
-  // Ultrasonic sensor: US1_PIN mode change dans readUltrasonic2Wire()
+  pinMode(US1_TRIG, OUTPUT);
+  pinMode(US1_ECHO, INPUT);
+
+  // Simulateur pulses sur GPIO 1 (TX/P1)
+  if (simPulse) {
+    pinMode(SIM_PULSE_PIN, OUTPUT);
+    digitalWrite(SIM_PULSE_PIN, LOW);
+    simNextToggle = millis() + random(30000, 60000);
+    Serial.println("SIM PULSE actif sur GPIO 1/TX (30-60s)");
+  }
 
   // Display
   tft.init();
@@ -1713,16 +1787,28 @@ void loop() {
   if (millis() - lastUltrasonicRead >= US_INTERVAL) {
     lastUltrasonicRead = millis();
 
-    long d1 = readUltrasonic2Wire(US1_PIN);
+    long d1 = readUltrasonic4Wire(US1_TRIG, US1_ECHO);
     int p1 = distanceToPercent(d1, 0);
     if (p1 >= 0 && p1 != basin1) {
       basin1 = p1;
       if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
       if (mqtt.connected()) {
         mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
+        // Publier valeur brute pour dashboard calibration
+        String rawTopic = "cyd/" + deviceId + "/basin1/raw";
+        mqtt.publish(rawTopic.c_str(), String(rawBasin[0]).c_str(), true);
       }
       Serial.printf("Bassin 1: %dcm = %d%%\n", (int)d1, basin1);
     }
+  }
+
+  // Simulateur de pulses aleatoires (30s-60s)
+  if (simPulse && millis() > simNextToggle) {
+    simState = !simState;
+    digitalWrite(SIM_PULSE_PIN, simState ? HIGH : LOW);
+    unsigned long interval = random(30000, 60000);
+    simNextToggle = millis() + interval;
+    Serial.printf("SIM: GPIO1=%d, prochain dans %lus\n", simState, interval / 1000);
   }
 
   // Process limit switch cycle
@@ -1736,6 +1822,13 @@ void loop() {
     snprintf(buf, sizeof(buf), "%02d:%02d", mins, secs);
     updateDompeurTime(String(buf));
     Serial.printf("Dompeur cycle: %lums = %s\n", ms, buf);
+  }
+
+  // Rafraichir compteur dompeur chaque seconde
+  static unsigned long lastDompeurRefresh = 0;
+  if (currentScreen == SCREEN_MAIN && !menuOpen && millis() - lastDompeurRefresh > 1000) {
+    lastDompeurRefresh = millis();
+    drawDompeurCard();
   }
 
   int sx, sy;
