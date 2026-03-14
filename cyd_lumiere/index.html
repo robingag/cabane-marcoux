@@ -150,7 +150,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   <div class="sec"><span>Mesures temps r&#233;el</span></div>
   <div class="r">
     <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div></div>
-    <div class="cd tp"><div class="lb">Temp&#233;rature</div><div class="vl" id="tmp">--.-&#176;C</div></div>
+    <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div></div>
   </div>
   <div class="sec"><span>Tendance dompeur</span></div>
   <div class="gc" style="position:relative">
@@ -260,6 +260,7 @@ var calData={1:{low:null,high:null},2:{low:null,high:null},3:{low:null,high:null
 document.getElementById("did").textContent=id;
 (function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
 var basinUnit="pct",basinDepth={1:0,2:0,3:0},basinPct={1:0,2:0,3:0};
+var curTemp="--.-",curHum=0;
 (function(){try{var u=localStorage.getItem("unit_"+id);if(u)basinUnit=u;var d=localStorage.getItem("depth_"+id);if(d)basinDepth=JSON.parse(d)}catch(e){}})();
 
 function slInit(){
@@ -346,6 +347,7 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
+function updTH(){var s=curTemp+"&deg;C";if(curHum>0)s+=" &nbsp;"+curHum.toFixed(0)+"%";document.getElementById("tmp").innerHTML=s}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.height=l+"%";f.className="tf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
 function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthTxt"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po";document.getElementById("depthVal"+n).parentElement.style.display=basinUnit==="in"?"flex":"none"}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=3;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
@@ -415,7 +417,7 @@ function go(){
     c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});
     c.on("connect",function(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
-      ["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
+      ["state","dompeur","temp","humidity","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
       ["settings/unit","settings/depth","settings/meo","settings/sync"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
@@ -424,7 +426,8 @@ function go(){
       var v=m.toString(),p="cyd/"+id+"/";
       if(tp===p+"state")sv(v==="1");
       if(tp===p+"dompeur")od(v);
-      if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";
+      if(tp===p+"temp"){curTemp=v;updTH()}
+      if(tp===p+"humidity"){curHum=parseFloat(v)||0;updTH()}
       if(tp===p+"basin1")sba(1,v);
       if(tp===p+"basin2")sba(2,v);
       if(tp===p+"basin3")sba(3,v);
