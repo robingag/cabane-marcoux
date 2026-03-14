@@ -410,20 +410,36 @@ function dg(){
 }
 function updateMeo(){var a=document.getElementById("ar");if(!meoOn||hist.length<4){a.textContent="";a.style.color="";return}var r=hist.slice(-3),o=hist.slice(-6,-3);if(o.length<2)o=hist.slice(0,-3);if(o.length<1){a.textContent="";a.style.color="";return}var avgR=r.reduce(function(s,v){return s+v},0)/r.length;var avgO=o.reduce(function(s,v){return s+v},0)/o.length;var diff=(avgR-avgO)/avgO*100;if(diff>10){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.style.color="#ef4444"}else if(diff<-10){a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.style.color="#22c55e"}else{a.textContent="";a.style.color=""}}
 var meoOn=true;
-var alarmOn=true,alarmPlaying=false,alarmCtx=null,lastDmpTime=0;
+var alarmOn=true,alarmPlaying=false,alarmCtx=null,lastDmpTime=0,audioUnlocked=false;
 function tgAlarm(){alarmOn=document.getElementById("alarm-chk").checked;if(!alarmOn)stopAlarm()}
+function unlockAudio(){
+  if(audioUnlocked)return;
+  try{
+    alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
+    var o=alarmCtx.createOscillator(),g=alarmCtx.createGain();
+    o.connect(g);g.connect(alarmCtx.destination);g.gain.value=0.001;
+    o.start();o.stop(alarmCtx.currentTime+0.01);
+    audioUnlocked=true;
+    console.log("Audio unlocked");
+  }catch(e){}
+}
+document.addEventListener("touchstart",unlockAudio,{once:true});
+document.addEventListener("click",unlockAudio,{once:true});
 function playAlarm(){
   if(alarmPlaying)return;alarmPlaying=true;
-  try{alarmCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}
+  if(!alarmCtx||alarmCtx.state==="closed"){
+    try{alarmCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}
+  }
+  if(alarmCtx.state==="suspended")alarmCtx.resume();
   function beepCycle(){
-    if(!alarmPlaying){alarmCtx.close();alarmCtx=null;return}
+    if(!alarmPlaying)return;
     var o=alarmCtx.createOscillator(),g=alarmCtx.createGain();
     o.connect(g);g.connect(alarmCtx.destination);
     o.type="square";o.frequency.value=880;
     g.gain.value=1.0;
     o.start();o.stop(alarmCtx.currentTime+0.3);
     setTimeout(function(){
-      if(!alarmPlaying){alarmCtx.close();alarmCtx=null;return}
+      if(!alarmPlaying)return;
       var o2=alarmCtx.createOscillator(),g2=alarmCtx.createGain();
       o2.connect(g2);g2.connect(alarmCtx.destination);
       o2.type="square";o2.frequency.value=1200;
@@ -433,15 +449,14 @@ function playAlarm(){
     },400);
   }
   beepCycle();
-  if(navigator.vibrate)navigator.vibrate([500,300,500,300,500]);
+  if(navigator.vibrate)navigator.vibrate([500,300,500,300,500,300,500,300,500,300]);
   document.querySelector(".gc").style.boxShadow="0 0 20px rgba(239,68,68,.8)";
 }
 function stopAlarm(){
   alarmPlaying=false;
-  if(alarmCtx){try{alarmCtx.close()}catch(e){}}alarmCtx=null;
   document.querySelector(".gc").style.boxShadow="";
 }
-function testAlarm(){playAlarm();setTimeout(stopAlarm,3000)}
+function testAlarm(){playAlarm();setTimeout(stopAlarm,5000);if(c&&c.connected)c.publish("cyd/"+id+"/alarm","test")}
 function checkDmpAlarm(){
   if(!alarmOn)return;
   if(dmpElapsed>=900&&hist.length>=5&&!alarmPlaying)playAlarm();
