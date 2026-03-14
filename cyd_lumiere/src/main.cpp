@@ -216,7 +216,7 @@ bool menuOpen = false;
 #define MENU_W       140
 #define MENU_ITEM_H  32
 #define MENU_H       (MENU_ITEMS * MENU_ITEM_H + 2)
-const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR Local", "QR Remote", "Infos", "Calibration" };
+const char* menuLabels[MENU_ITEMS] = { "WiFi", "QR WiFi", "QR Remote", "Infos", "Calibration" };
 
 // WiFi scan results
 #define WIFI_MAX_SCAN 5
@@ -589,29 +589,36 @@ void drawTrendGraph() {
 }
 
 // ---- Basins (horizontal bars) ----
-void drawBasinBar(int y, const char* name, int level) {
-  int nameX = 10, barX = 110, barW = 155, barH = 30;
-  // Name (blue, textSize 2)
-  tft.setTextFont(1); tft.setTextSize(2);
-  tft.setTextDatum(ML_DATUM);
+void drawBasinTank(int cx, int tankW, int tankH, int topY, const char* name, int level) {
+  // Name label above tank
+  tft.setTextFont(2); tft.setTextSize(1);
+  tft.setTextDatum(TC_DATUM);
   tft.setTextColor(C_LABEL, C_CARD);
-  tft.drawString(name, nameX, y + 17);
-  // Bar wrapper
-  tft.fillRect(barX, y + 2, barW, barH, C_SB_BG);
-  tft.drawRect(barX, y + 2, barW, barH, C_BORDER);
-  // Fill
-  int fillW = (barW - 2) * level / 100;
-  if (fillW > 0) {
+  tft.drawString(name, cx + tankW / 2, topY);
+  // Tank border
+  int ty = topY + 16;
+  tft.fillRect(cx, ty, tankW, tankH, C_SB_BG);
+  tft.drawRect(cx, ty, tankW, tankH, C_BORDER);
+  // Graduation lines (25%, 50%, 75%)
+  for (int g = 1; g <= 3; g++) {
+    int gy = ty + tankH - (tankH * g * 25 / 100);
+    tft.drawFastHLine(cx + 1, gy, 4, C_BORDER);
+    tft.drawFastHLine(cx + tankW - 5, gy, 4, C_BORDER);
+  }
+  // Fill from bottom
+  int fillH = (tankH - 2) * level / 100;
+  if (fillH > 0) {
     uint16_t bc = C_GREEN;
     if (level >= 91) bc = C_RED;
     else if (level >= 61) bc = C_YELLOW;
-    tft.fillRect(barX + 1, y + 3, fillW, barH - 2, bc);
+    tft.fillRect(cx + 1, ty + tankH - 1 - fillH, tankW - 2, fillH, bc);
   }
-  // Percentage (white, textSize 2)
-  tft.setTextDatum(MR_DATUM);
+  // Percentage below tank
+  tft.setTextDatum(TC_DATUM);
   tft.setTextColor(C_TXT, C_CARD);
+  tft.setTextFont(2); tft.setTextSize(1);
   String pct = String(level) + "%";
-  tft.drawString(pct.c_str(), SW - 8, y + 17);
+  tft.drawString(pct.c_str(), cx + tankW / 2, ty + tankH + 3);
 }
 
 void drawGearIcon(int x, int y) {
@@ -630,9 +637,13 @@ void drawBasinCards() {
   int cy = 88, ch = 148;
   tft.fillRoundRect(4, cy, SW - 8, ch, 6, C_CARD);
   tft.drawRoundRect(4, cy, SW - 8, ch, 6, C_BORDER);
-  drawBasinBar(cy + 20, "Bassin 1", basin1);
-  drawBasinBar(cy + 68, "Bassin 2", basin2);
-  drawBasinBar(cy + 116, "Bassin 3", basin3);
+  // 3 vertical tanks side by side
+  int tankW = 70, tankH = 95;
+  int gap = (SW - 8 - 3 * tankW) / 4;
+  int topY = cy + 8;
+  drawBasinTank(4 + gap, tankW, tankH, topY, "Eau erable", basin1);
+  drawBasinTank(4 + gap * 2 + tankW, tankW, tankH, topY, "Concentre", basin2);
+  drawBasinTank(4 + gap * 3 + tankW * 2, tankW, tankH, topY, "Permeat", basin3);
 }
 
 void drawVacuumBtn() {
@@ -949,7 +960,6 @@ void drawMainScreen() {
   drawHeader();
   drawDompeurCard();
   drawBasinCards();
-  drawVacuumBtn();
 }
 
 // ---- Drawing: WiFi list screen ----
@@ -961,7 +971,22 @@ void drawWifiListScreen() {
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.drawString("Scan WiFi...", SW / 2, SH / 2);
 
+  // Stop BLE before WiFi scan (shared radio)
+  if (bleInitDone) {
+    NimBLEDevice::getScan()->stop();
+    NimBLEDevice::deinit(true);
+    bleInitDone = false;
+    delay(200);
+    Serial.println("BLE stopped for WiFi scan");
+  }
+
+  WiFi.disconnect(true);
+  delay(100);
+  WiFi.mode(WIFI_STA);
+  delay(500);
+  Serial.println("Starting WiFi scan...");
   int n = WiFi.scanNetworks();
+  Serial.print("WiFi scan result: "); Serial.println(n);
   wifiCount = (n > WIFI_MAX_SCAN) ? WIFI_MAX_SCAN : n;
   for (int i = 0; i < wifiCount; i++) {
     wifiNames[i] = WiFi.SSID(i);
@@ -1230,14 +1255,7 @@ void handleMainTouch(int tx, int ty) {
     drawDropdownMenu();
     return;
   }
-  // Vacuum slider touch -> open PIN
-  if (ty >= 214 && ty <= 236) {
-    pinReason = 1;
-    pinCode = "";
-    currentScreen = SCREEN_PIN;
-    drawPinScreen();
-    return;
-  }
+  // Vacuum slider removed from TFT
 }
 
 // ---- Dropdown Menu ----
@@ -1285,12 +1303,10 @@ void handleDropdownTouch(int tx, int ty) {
         currentScreen = SCREEN_WIFI_LIST;
         drawWifiListScreen();
         break;
-      case 1: // QR Local
-        if (WiFi.status() == WL_CONNECTED) {
-          menuOpen = false;
-          currentScreen = SCREEN_QR_LOCAL;
-          drawQRScreen(true);
-        }
+      case 1: // QR WiFi
+        menuOpen = false;
+        currentScreen = SCREEN_QR_LOCAL;
+        drawQRScreen(true);
         break;
       case 2: // QR Remote
         menuOpen = false;
@@ -1326,14 +1342,14 @@ void drawQRScreen(bool isLocal) {
   tft.setTextSize(2);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_TXT, C_HEADER);
-  tft.drawString(isLocal ? "QR Local" : "QR Remote", SW / 2, 11);
+  tft.drawString(isLocal ? "QR WiFi" : "QR Remote", SW / 2, 11);
 
   // Construire l URL
   String url;
   if (isLocal) {
-    url = "http://" + WiFi.localIP().toString() + "/remote";
+    url = "WIFI:T:WPA;S:Cabane Marcoux;P:Cabane2025;;";
   } else {
-    url = "https://robingag.github.io/cabane-marcoux/?id=" + deviceId;
+    url = "https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?id=" + deviceId;
   }
 
   // Afficher l URL en petit
@@ -1747,8 +1763,8 @@ void setup() {
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
 
-  // BLE Inkbird init
-  bleInitInkbird();
+  // BLE init deferred — will start after WiFi connected
+  // bleInitInkbird() called later in loop when WiFi is up
 
   // Web server routes
   server.on("/", handleRoot);
@@ -1856,6 +1872,11 @@ void loop() {
   // BLE scan periodique Inkbird
   if (millis() - lastBleScan >= BLE_SCAN_INTERVAL) {
     lastBleScan = millis();
+    if (!bleInitDone) {
+      Serial.println("BLE: init NimBLE...");
+      bleInitInkbird();
+      Serial.println("BLE: init done, first scan");
+    }
     bleScanInkbird();
     // Publier temp + humidity via MQTT
     if (mqtt.connected()) {

@@ -1,0 +1,33 @@
+# Dossiers hors projet CYD
+Camera/
+STONKAM/
+Manuel pompe a beton/
+Liste de client e-Trak/
+Rayco/
+Prompt/
+Skill/
+LOG/
+autre/
+.claude/
+
+# Fichiers bureau
+*.xlsm
+Balances_Hydrauliques_Tracteur.xlsx
+PN_Production_2026.xlsm
+Template document e-Trak.docx
+procedure_abitibi_etrak*
+extracted_pdf_text.txt
+template_analysis*.txt
+image1.png
+image2.jpeg
+extract_pdf.py
+analyze_template*.py
+verify_clients.py
+auto_push.ps1
+push_and_pr.ps1
+push_to_github.bat
+PUSH_GITHUB.bat
+C?Usersryb086*
+
+# PlatformIO build
+cyd_lumiere/.pio/
