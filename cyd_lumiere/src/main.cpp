@@ -141,7 +141,7 @@ float temperature = 0.0;
 float humidity = 0.0;
 int bleBattery = -1;
 unsigned long lastBleScan = 0;
-const unsigned long BLE_SCAN_INTERVAL = 30000; // 30 sec
+const unsigned long BLE_SCAN_INTERVAL = 20000; // 20s entre scans // 30 sec
 bool bleInitDone = false;
 String mqttTopicHumidity;
 int basin1 = 0;  // 0-100%
@@ -1649,28 +1649,51 @@ void handleToggle() {
 // ---- BLE Inkbird IBS-TH2 ----
 class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
   void onResult(NimBLEAdvertisedDevice* device) {
-    // IBS-TH2 advertise comme "sps"
     std::string devName = device->getName();
-    if (devName == "sps") {
-      // Parser manufacturer data
+    std::string devAddr = device->getAddress().toString();
+    // Log tous les appareils BLE trouves pour debug
+    Serial.print("BLE found: ");
+    Serial.print(devAddr.c_str());
+    Serial.print(" name='");
+    Serial.print(devName.c_str());
+    Serial.print("' rssi=");
+    Serial.println(device->getRSSI());
+    // IBS-TH2 advertise comme "sps" ou "iBBQ" ou contient "Inkbird"
+    bool isInkbird = (devName == "sps" || devName == "iBBQ" || devName.find("Inkbird") != std::string::npos || devName.find("IBS") != std::string::npos);
+    // Aussi checker par manufacturer data meme sans nom
+    if (isInkbird || (devName.empty() && device->haveManufacturerData())) {
       if (device->haveManufacturerData()) {
         std::string mfData = device->getManufacturerData();
-        if (mfData.length() >= 9) {
-          // UUID (2 premiers bytes, little endian) = temperature * 100
+        Serial.print("  MfData len=");
+        Serial.print(mfData.length());
+        Serial.print(" hex: ");
+        for (size_t i = 0; i < mfData.length() && i < 16; i++) {
+          char hx[4];
+          snprintf(hx, sizeof(hx), "%02X ", (uint8_t)mfData[i]);
+          Serial.print(hx);
+        }
+        Serial.println();
+        if (mfData.length() >= 7) {
           int16_t rawTemp = (uint8_t)mfData[0] | ((uint8_t)mfData[1] << 8);
           float temp = rawTemp / 100.0f;
-          // Humidity: bytes 2-3 (little endian) / 100
           uint16_t rawHum = (uint8_t)mfData[2] | ((uint8_t)mfData[3] << 8);
           float hum = rawHum / 100.0f;
-          // Battery: byte 7
-          int bat = (uint8_t)mfData[7];
-
-          // Valider les donnees
+          int bat = (mfData.length() >= 8) ? (uint8_t)mfData[7] : -1;
+          Serial.print("  Parsed: temp=");
+          Serial.print(temp);
+          Serial.print(" hum=");
+          Serial.print(hum);
+          Serial.print(" bat=");
+          Serial.println(bat);
           if (temp > -40.0 && temp < 80.0 && hum >= 0 && hum <= 100) {
             temperature = temp;
             humidity = hum;
             bleBattery = bat;
-            Serial.printf("BLE Inkbird: %.1fC, %.1f%%, bat=%d%%\n", temp, hum, bat);
+            Serial.print(">>> Inkbird OK: ");
+            Serial.print(temp);
+            Serial.print("C ");
+            Serial.print(hum);
+            Serial.println("%");
           }
         }
       }
@@ -1694,9 +1717,14 @@ void bleInitInkbird() {
 
 void bleScanInkbird() {
   if (!bleInitDone) return;
+  Serial.println("BLE: starting scan 10s...");
   NimBLEScan* pScan = NimBLEDevice::getScan();
-  // Scan async pendant 5 secondes
-  pScan->start(5, false);
+  pScan->clearResults();
+  // Scan 10 secondes (bloquant) pour mieux capter Inkbird
+  pScan->start(10, false);
+  Serial.print("BLE: scan done, found ");
+  Serial.print(pScan->getResults().getCount());
+  Serial.println(" devices");
 }
 
 // ---- Setup ----
@@ -1872,16 +1900,24 @@ void loop() {
   // BLE scan periodique Inkbird
   if (millis() - lastBleScan >= BLE_SCAN_INTERVAL) {
     lastBleScan = millis();
+    Serial.println("--- BLE scan cycle ---");
+    Serial.print("bleInitDone=");
+    Serial.println(bleInitDone);
     if (!bleInitDone) {
       Serial.println("BLE: init NimBLE...");
       bleInitInkbird();
-      Serial.println("BLE: init done, first scan");
+      Serial.println("BLE: init done");
     }
     bleScanInkbird();
+    Serial.print("Temp apres scan: ");
+    Serial.print(temperature);
+    Serial.print("C Hum: ");
+    Serial.println(humidity);
     // Publier temp + humidity via MQTT
     if (mqtt.connected()) {
       mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
       mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
+      Serial.println("MQTT temp/hum published");
     }
     // Rafraichir ecran
     if (currentScreen == SCREEN_MAIN && !menuOpen) drawTempCard();
