@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>CYD</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh}
+.l{width:160px;height:160px;border-radius:50%;background:#333;border:3px solid #555;margin:20px 0 30px;transition:.3s}
+.l.on{background:#fd0;box-shadow:0 0 60px #fd0,0 0 120px #fa0;border-color:#fa0}
+.b{padding:18px 50px;font-size:22px;font-weight:700;border:0;border-radius:12px;color:#fff;min-width:160px;cursor:pointer}
+.b.off{background:#0078d7}.b.on{background:#e94560}
+.s{margin-top:15px;font-size:13px;padding:5px 14px;border-radius:20px}
+.s.ok{background:#1a4a1a;color:#4f4}.s.er{background:#4a1a1a;color:#f44}.s.w{background:#4a4a1a;color:#ff4}
+h2{font-size:20px;margin-bottom:5px}p{font-size:12px;color:#888}
+</style></head><body>
+<h2>CYD Remote</h2><p>ID: a48c</p>
+<div class="l" id="l"></div>
+<button class="b off" id="b" onclick="t()" disabled>ON</button>
+<div class="s w" id="s">Connexion...</div>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+var c,st=0,id="a48c";
+function u(o){st=o;var l=document.getElementById("l"),b=document.getElementById("b");if(o){l.classList.add("on");b.textContent="OFF";b.className="b on"}else{l.classList.remove("on");b.textContent="ON";b.className="b off"}}
+function ss(t,cl){var e=document.getElementById("s");e.textContent=t;e.className="s "+cl}
+function t(){if(c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle")}
+function go(){ss("Connexion...","w");c=mqtt.connect("wss://broker.hivemq.com:8884/mqtt",{clientId:"q-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:10000,reconnectPeriod:5000});c.on("connect",function(){ss("Connecte!","ok");document.getElementById("b").disabled=false;c.subscribe("cyd/"+id+"/state")});c.on("message",function(tp,m){if(tp==="cyd/"+id+"/state")u(m.toString()==="1")});c.on("error",function(){ss("Erreur","er")});c.on("close",function(){ss("Deconnecte","er");document.getElementById("b").disabled=true});c.on("reconnect",function(){ss("Reconnexion...","w")})}
+go();document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
+</script></body></html>

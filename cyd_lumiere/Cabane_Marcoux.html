@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#080a0e">
+<title>Cabane Marcoux</title><style>
+/* BASE */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:#c8d4e0;user-select:none;min-height:100vh}
+/* HEADER */
+.hd{background:linear-gradient(135deg,#0d1520,#0a1018);padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;box-shadow:0 4px 24px rgba(0,0,0,.7),0 2px 0 rgba(245,158,11,.2)}
+.hd-left{display:flex;align-items:center;gap:12px}
+.hd-ico{width:38px;height:38px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 14px rgba(245,158,11,.35),inset 0 1px 0 rgba(255,255,255,.15);flex-shrink:0}
+.hd-title{display:flex;flex-direction:column;gap:2px}
+.hd h1{font-size:14px;letter-spacing:3px;font-weight:700;color:#f1f5f9;text-transform:uppercase}
+.hd-sub{font-size:8px;color:#7a8fa8;letter-spacing:2px;text-transform:uppercase}
+.hd-right{display:flex;align-items:center;gap:10px}
+.mn-btn{background:rgba(255,255,255,.04);border:1px solid #1e2d40;color:#64748b;font-size:18px;cursor:pointer;padding:6px 10px;border-radius:4px;line-height:1;transition:all .2s}
+.mn-btn:active{background:rgba(245,158,11,.15);color:#f59e0b}
+.dt{width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 5px rgba(239,68,68,.6);flex-shrink:0}
+.dt.ok{background:#22c55e;box-shadow:0 0 7px rgba(34,197,94,.7)}
+.dt.w{background:#f59e0b;box-shadow:0 0 7px rgba(245,158,11,.6)}
+/* QR PANEL */
+.mn-panel{background:#060810;border-bottom:1px solid #1a2332;padding:0 16px;text-align:center;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
+.mn-panel.open{max-height:320px;padding:20px 16px}
+.mn-title{font-size:8px;color:#f59e0b;text-transform:uppercase;letter-spacing:3px;margin-bottom:14px}
+.mn-qr{display:inline-block;background:#fff;padding:10px;border-radius:4px;margin-bottom:10px;box-shadow:0 0 24px rgba(245,158,11,.08)}
+.mn-qr img{display:block;width:160px;height:160px}
+.mn-url{font-size:9px;color:#64748b;word-break:break-all;max-width:280px;margin:0 auto;font-family:'Courier New',monospace}
+/* WRAPPER */
+.w{max-width:460px;margin:0 auto;padding:16px 12px}
+/* SECTION DIVIDER */
+.sec{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec span{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:3px;white-space:nowrap}
+.sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#1a2332,transparent)}
+/* METRIC CARDS */
+.r{display:flex;gap:10px;margin-bottom:16px}
+.cd{background:#0c1018;border:1px solid #1a2332;border-top:2px solid #f59e0b;border-radius:4px;padding:14px 12px;flex:1;position:relative;overflow:hidden}
+.cd.tp{border-top-color:#38bdf8}
+.cd::after{content:'';position:absolute;top:0;right:0;width:50px;height:50px;background:radial-gradient(circle at 100% 0,rgba(245,158,11,.07),transparent 70%);pointer-events:none}
+.cd.tp::after{background:radial-gradient(circle at 100% 0,rgba(56,189,248,.07),transparent 70%)}
+.cd .lb{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+.cd .vl{font-family:'Courier New',monospace;font-size:28px;font-weight:700;text-align:center;line-height:1;letter-spacing:-1px}
+.cd.dm .vl{color:#f59e0b;text-shadow:0 0 16px rgba(245,158,11,.25)}
+.cd.tp .vl{color:#38bdf8;text-shadow:0 0 16px rgba(56,189,248,.25)}
+/* GRAPH */
+.gc{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #3b82f6;border-radius:4px;padding:10px 10px 8px;margin-bottom:16px}
+.gc .gl{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.gc .ar{font-size:16px;font-weight:700;line-height:1}
+.gc .ar.u{color:#ef4444}
+.gc .ar.d{color:#22c55e}
+.gc canvas{width:100%;height:90px;display:block;border-radius:2px}
+/* BASINS */
+.bc{background:#0c1018;border:1px solid #1a2332;border-radius:4px;padding:14px 14px 12px;margin-bottom:16px;position:relative}
+.bc-hd{font-size:8px;color:#475569;text-transform:uppercase;letter-spacing:3px;margin-bottom:14px;display:flex;justify-content:space-between}
+.br{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.br:last-child{margin:0}
+.br .nl{font-size:10px;color:#94a3b8;width:62px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.br .bw{flex:1;background:#080a0e;border:1px solid #131c28;border-radius:2px;height:20px;overflow:hidden}
+.br .bf{height:100%;border-radius:1px;transition:width .5s ease}
+.bf.h{background:linear-gradient(90deg,#991b1b,#ef4444);box-shadow:inset 0 0 8px rgba(239,68,68,.2)}
+.bf.m{background:linear-gradient(90deg,#92400e,#f59e0b);box-shadow:inset 0 0 8px rgba(245,158,11,.2)}
+.bf.l{background:linear-gradient(90deg,#14532d,#22c55e);box-shadow:inset 0 0 8px rgba(34,197,94,.2)}
+.br .pc{font-family:'Courier New',monospace;font-size:11px;width:36px;text-align:right;color:#7a8fa8;font-weight:700}
+/* CALIBRATION GEAR */
+.cal-gear{background:none;border:none;color:#475569;font-size:28px;cursor:pointer;padding:2px 0;transition:color .2s;line-height:1}
+.cal-gear:active{color:#f59e0b}
+/* SLIDER */
+.sl-wrap{margin-bottom:16px}
+.sl-track{position:relative;height:56px;border-radius:4px;border:2px solid #1a2332;background:#080a0e;overflow:hidden;touch-action:none;box-shadow:inset 0 2px 8px rgba(0,0,0,.5)}
+.sl-track.on{border-color:#22c55e40}
+.sl-fill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(239,68,68,.05),transparent 60%);pointer-events:none;transition:background .4s}
+.sl-track.on .sl-fill{background:linear-gradient(90deg,rgba(34,197,94,.07),transparent 60%)}
+.sl-hint{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;letter-spacing:2px;pointer-events:none;transition:opacity .3s;text-transform:uppercase}
+.sl-hint.l{left:64px;color:rgba(239,68,68,.5)}
+.sl-track.on .sl-hint.l{opacity:0}
+.sl-hint.r{right:64px;color:rgba(34,197,94,.7);opacity:0}
+.sl-track.on .sl-hint.r{opacity:1}
+.sl-hdl{position:absolute;top:2px;width:48px;height:48px;border-radius:4px;background:linear-gradient(160deg,#1c2538,#111825);border:1px solid #2a3a52;box-shadow:0 2px 10px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:grab;touch-action:none;transition:border-color .3s,box-shadow .3s}
+.sl-track.on .sl-hdl{border-color:rgba(34,197,94,.4);box-shadow:0 0 14px rgba(34,197,94,.12),0 2px 10px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04)}
+.sl-hdl::after{content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:#2a3a52;border-radius:1px;box-shadow:0 5px 0 #2a3a52,0 10px 0 #2a3a52}
+/* PIN OVERLAY */
+.pin-ov{display:none;position:fixed;inset:0;background:rgba(4,6,10,.93);z-index:200;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pin-ov.show{display:flex}
+.pin-box{background:#0c1018;border:1px solid #1a2332;border-top:2px solid #f59e0b;border-radius:6px;padding:28px 24px;width:272px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.9),0 0 0 1px rgba(245,158,11,.05)}
+.pin-ttl{font-size:8px;color:#f59e0b;text-transform:uppercase;letter-spacing:3px;margin-bottom:22px}
+.pin-dots{display:flex;justify-content:center;gap:18px;margin-bottom:18px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #1a2332;background:none;transition:all .15s}
+.pin-dot.f{background:#f59e0b;border-color:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.5)}
+.pin-err{color:#ef4444;font-size:11px;min-height:18px;margin-bottom:12px;letter-spacing:.5px}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.pk{background:#080a0e;border:1px solid #1a2332;color:#64748b;font-family:'Courier New',monospace;font-size:20px;font-weight:700;padding:14px;border-radius:4px;cursor:pointer;transition:all .15s}
+.pk:active{background:#101620;border-color:rgba(245,158,11,.3);color:#f59e0b}
+.pk.del{font-family:system-ui,Arial;font-size:13px;color:#64748b}
+.pk.mt{background:none;border:none;cursor:default}
+.pin-cancel{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;transition:all .2s}
+.pin-cancel:active{border-color:#1e2d40;color:#475569}
+/* CALIBRATION OVERLAY */
+.cal-ov{display:none;position:fixed;inset:0;background:rgba(4,6,10,.93);z-index:200;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.cal-ov.show{display:flex}
+.cal-box{background:#0c1018;border:1px solid #1a2332;border-top:2px solid #3b82f6;border-radius:6px;padding:24px 20px;width:320px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.9)}
+.cal-ttl{font-size:8px;color:#3b82f6;text-transform:uppercase;letter-spacing:3px;margin-bottom:18px;text-align:center}
+.cal-basin{background:#080a0e;border:1px solid #131c28;border-radius:4px;padding:12px;margin-bottom:10px}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.cal-name{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
+.cal-raw{font-family:'Courier New',monospace;font-size:12px;color:#f59e0b}
+.cal-info{font-family:'Courier New',monospace;font-size:10px;color:#4a6080;margin-bottom:8px}
+.cal-btns{display:flex;gap:8px}
+.cal-btn{flex:1;padding:10px 0;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;color:#fff;text-transform:uppercase;letter-spacing:1px;transition:all .15s}
+.cal-low{background:linear-gradient(135deg,#991b1b,#b91c1c)}
+.cal-low:active{background:#7f1d1d}
+.cal-high{background:linear-gradient(135deg,#1e40af,#2563eb)}
+.cal-high:active{background:#1e3a8a}
+.cal-btn.done{opacity:.5}
+.cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;margin-top:6px;transition:all .2s}
+.cal-close:active{border-color:#1e2d40;color:#475569}
+/* STATUS BAR */
+.sb{background:#060810;border:1px solid #111a26;border-radius:4px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:'Courier New',monospace;font-size:10px;color:#4a6080}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:#4a6080;margin-right:8px;display:inline-block;vertical-align:middle}
+</style></head><body>
+<div class="hd">
+  <div class="hd-left">
+    <div class="hd-ico">&#127809;</div>
+    <div class="hd-title"><h1>Cabane Marcoux</h1><div class="hd-sub">Syst&#232;me de contr&#244;le</div></div>
+  </div>
+  <div class="hd-right">
+    <button class="mn-btn" onclick="tgMenu()" title="QR Code">&#9776;</button>
+    <div class="dt w" id="dt"></div>
+  </div>
+</div>
+<div class="mn-panel" id="mnp">
+  <div class="mn-title">Acc&#232;s Remote &mdash; QR Code</div>
+  <div class="mn-qr"><img id="qrimg" src="" alt="QR"></div>
+  <div class="mn-url" id="qrurl"></div>
+</div>
+<div class="w">
+  <div class="sec"><span>Mesures temps r&#233;el</span></div>
+  <div class="r">
+    <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div></div>
+    <div class="cd tp"><div class="lb">Temp&#233;rature</div><div class="vl" id="tmp">--.-&#176;C</div></div>
+  </div>
+  <div class="sec"><span>Tendance dompeur</span></div>
+  <div class="gc">
+    <div class="gl"><span>Historique &#8212; 30 points</span><span class="ar" id="ar"></span></div>
+    <canvas id="gr" height="90"></canvas>
+  </div>
+  <div class="sec"><span>Niveau des bassins</span></div>
+  <div class="bc">
+    <div class="bc-hd"><span>&#201;tat de remplissage</span><button class="cal-gear" onclick="showCalPin()">&#9881;</button></div>
+    <div class="br"><span class="nl">Bassin 1</span><div class="bw"><div class="bf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
+    <div class="br"><span class="nl">Bassin 2</span><div class="bw"><div class="bf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
+    <div class="br"><span class="nl">Bassin 3</span><div class="bw"><div class="bf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
+  </div>
+  <div class="sec"><span>Contr&#244;le vacuum</span></div>
+  <div class="sl-wrap">
+    <div class="sl-track" id="slt">
+      <div class="sl-fill"></div>
+      <div class="sl-hint l">&#9654; VACUUM ON</div>
+      <div class="sl-hint r">VACUUM OFF &#9664;</div>
+      <div class="sl-hdl" id="slh">&#9889;</div>
+    </div>
+  </div>
+  <div class="sb">
+    <span><span class="sb-dot" id="sb-dot"></span><span id="st">Connexion...</span></span>
+    <span>ID&nbsp;<span id="did">---</span></span>
+  </div>
+</div>
+<div class="pin-ov" id="pino">
+  <div class="pin-box">
+    <div class="pin-ttl" id="pin-ttl">Code NIP requis</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="perr"></div>
+    <div class="pin-pad">
+      <button class="pk" onclick="pk(1)">1</button><button class="pk" onclick="pk(2)">2</button><button class="pk" onclick="pk(3)">3</button>
+      <button class="pk" onclick="pk(4)">4</button><button class="pk" onclick="pk(5)">5</button><button class="pk" onclick="pk(6)">6</button>
+      <button class="pk" onclick="pk(7)">7</button><button class="pk" onclick="pk(8)">8</button><button class="pk" onclick="pk(9)">9</button>
+      <button class="pk del" onclick="pkd()">&#9003;</button><button class="pk" onclick="pk(0)">0</button><button class="pk mt"></button>
+    </div>
+    <button class="pin-cancel" onclick="cancelPin()">Annuler</button>
+  </div>
+</div>
+<div class="cal-ov" id="calo">
+  <div class="cal-box">
+    <div class="cal-ttl">Calibration Bassins</div>
+    <div class="cal-basin" id="calB1">
+      <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
+      <div class="cal-info" id="calInfo1">Bas: -- | Haut: --</div>
+      <div class="cal-btns">
+        <button class="cal-btn cal-low" onclick="calibrate(1,'low')">Bas Niveau</button>
+        <button class="cal-btn cal-high" onclick="calibrate(1,'high')">Haut Niveau</button>
+      </div>
+    </div>
+    <div class="cal-basin" id="calB2">
+      <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
+      <div class="cal-info" id="calInfo2">Bas: -- | Haut: --</div>
+      <div class="cal-btns">
+        <button class="cal-btn cal-low" onclick="calibrate(2,'low')">Bas Niveau</button>
+        <button class="cal-btn cal-high" onclick="calibrate(2,'high')">Haut Niveau</button>
+      </div>
+    </div>
+    <div class="cal-basin" id="calB3">
+      <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
+      <div class="cal-info" id="calInfo3">Bas: -- | Haut: --</div>
+      <div class="cal-btns">
+        <button class="cal-btn cal-low" onclick="calibrate(3,'low')">Bas Niveau</button>
+        <button class="cal-btn cal-high" onclick="calibrate(3,'high')">Haut Niveau</button>
+      </div>
+    </div>
+    <button class="cal-close" onclick="closeCal()">Fermer</button>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
+<script>
+var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+var vacOn=false,pinCode="",pendingState=null,slDrag=false,slStartX=0;
+var pinMode="vac",CAL_PIN="123",VAC_PIN="777";
+var rawBasin={1:0,2:0,3:0};
+var calData={1:{low:null,high:null},2:{low:null,high:null},3:{low:null,high:null}};
+document.getElementById("did").textContent=id;
+(function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
+
+function slInit(){
+  var hdl=document.getElementById("slh"),trk=document.getElementById("slt");
+  hdl.style.left="4px";
+  hdl.addEventListener("pointerdown",function(e){slDrag=true;slStartX=e.clientX;hdl.setPointerCapture(e.pointerId);e.preventDefault()});
+  hdl.addEventListener("pointermove",function(e){
+    if(!slDrag)return;
+    var tw=trk.offsetWidth-56,base=vacOn?tw:4,np=Math.max(4,Math.min(tw,base+(e.clientX-slStartX)));
+    hdl.style.transition="none";hdl.style.left=np+"px";
+  });
+  hdl.addEventListener("pointerup",function(e){
+    if(!slDrag)return;slDrag=false;
+    var tw=trk.offsetWidth-56,cur=parseInt(hdl.style.left)||4,mid=tw/2;
+    if(!vacOn&&cur>mid)showPin(true);
+    else if(vacOn&&cur<mid)showPin(false);
+    else resetSlider();
+  });
+}
+function resetSlider(){
+  var hdl=document.getElementById("slh"),trk=document.getElementById("slt");
+  hdl.style.transition="left .25s";
+  hdl.style.left=(vacOn?trk.offsetWidth-56:4)+"px";
+}
+function updSlider(){
+  var hdl=document.getElementById("slh"),trk=document.getElementById("slt");
+  trk.className="sl-track"+(vacOn?" on":"");
+  hdl.style.transition="left .3s";
+  hdl.style.left=(vacOn?trk.offsetWidth-56:4)+"px";
+}
+function showPin(ns){
+  pendingState=ns;pinMode="vac";pinCode="";updDots();
+  document.getElementById("perr").textContent="";
+  document.getElementById("pin-ttl").textContent="Code NIP requis";
+  document.getElementById("pino").className="pin-ov show";
+}
+function showCalPin(){
+  pinMode="cal";pinCode="";updDots();
+  document.getElementById("perr").textContent="";
+  document.getElementById("pin-ttl").textContent="NIP Calibration";
+  document.getElementById("pino").className="pin-ov show";
+}
+function cancelPin(){
+  document.getElementById("pino").className="pin-ov";
+  if(pinMode==="vac")resetSlider();
+}
+function pk(d){if(pinCode.length>=3)return;pinCode+=d;updDots();if(pinCode.length===3)setTimeout(chkPin,150)}
+function pkd(){if(pinCode.length>0){pinCode=pinCode.slice(0,-1);updDots()}}
+function updDots(){for(var i=1;i<=3;i++)document.getElementById("pd"+i).className="pin-dot"+(pinCode.length>=i?" f":"")}
+function chkPin(){
+  var ok=false;
+  if(pinMode==="vac"&&pinCode===VAC_PIN)ok=true;
+  if(pinMode==="cal"&&pinCode===CAL_PIN)ok=true;
+  if(ok){
+    document.getElementById("pino").className="pin-ov";
+    if(pinMode==="vac"&&c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle");
+    if(pinMode==="cal")openCal();
+  }else{
+    document.getElementById("perr").textContent="Code incorrect \u2717";
+    pinCode="";updDots();
+    setTimeout(function(){document.getElementById("perr").textContent=""},1500);
+    if(pinMode==="vac")resetSlider();
+  }
+}
+function openCal(){updateCalDisplay();document.getElementById("calo").className="cal-ov show"}
+function closeCal(){document.getElementById("calo").className="cal-ov"}
+function updateCalDisplay(){
+  for(var n=1;n<=3;n++){
+    document.getElementById("rawB"+n).textContent="Brut: "+rawBasin[n];
+    var lo=calData[n].low,hi=calData[n].high;
+    document.getElementById("calInfo"+n).textContent="Bas: "+(lo!==null?lo:"--")+" | Haut: "+(hi!==null?hi:"--");
+  }
+}
+function calibrate(basin,point){
+  if(!c||!c.connected)return;
+  c.publish("cyd/"+id+"/cmd/cal",JSON.stringify({basin:basin,point:point}));
+  var btns=document.querySelectorAll("#calB"+basin+" .cal-btn");
+  var idx=(point==="low")?0:1;
+  btns[idx].classList.add("done");
+  setTimeout(function(){btns[idx].classList.remove("done")},1500);
+}
+function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
+function sv(on){vacOn=on;updSlider()}
+function sba(n,v){var l=parseInt(v)||0;var f=document.getElementById("bf"+n);f.style.width=l+"%";f.className="bf "+(l>=50?"h":l>=25?"m":"l");document.getElementById("bp"+n).textContent=l+"%"}
+function dg(){
+  var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
+  cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
+  var W=cv.offsetWidth,H=90;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle="#060810";ctx.fillRect(0,0,W,H);
+  if(hist.length<2){
+    ctx.fillStyle="#475569";ctx.font="11px system-ui";ctx.textAlign="center";
+    ctx.fillText("En attente de donn\u00e9es...",W/2,H/2+4);
+    document.getElementById("ar").textContent="";return;
+  }
+  var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
+  if(rg<10){mn-=5;mx+=5;rg=mx-mn}
+  var p={l:32,r:8,t:8,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;
+  ctx.strokeStyle="#111a26";ctx.setLineDash([2,5]);
+  for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
+  ctx.setLineDash([]);
+  ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
+  ctx.fillText(mx+"s",p.l-4,p.t+7);ctx.fillText(mn+"s",p.l-4,p.t+ch+4);
+  ctx.lineWidth=1.5;ctx.lineJoin="round";
+  for(var i=1;i<n;i++){
+    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+ch-(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+ch-(hist[i]-mn)*ch/rg;
+    ctx.strokeStyle=hist[i]<=hist[i-1]?"#22c55e":"#ef4444";
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  }
+  var a=document.getElementById("ar");
+  if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar u"}
+  else{a.textContent="\u25BC";a.className="ar d"}
+}
+function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
+function ss(t,cl){
+  document.getElementById("st").textContent=t;
+  document.getElementById("dt").className="dt "+cl;
+  var d=document.getElementById("sb-dot");
+  d.style.background=cl==="ok"?"#22c55e":cl==="w"?"#f59e0b":"#ef4444";
+  d.style.boxShadow=cl==="ok"?"0 0 6px rgba(34,197,94,.6)":cl==="w"?"0 0 6px rgba(245,158,11,.5)":"0 0 6px rgba(239,68,68,.5)";
+}
+function tgMenu(){
+  var p=document.getElementById("mnp");var open=p.classList.toggle("open");
+  if(open&&!p.dataset.loaded){
+    var url="https://robingag.github.io/cabane-marcoux/?id="+id;
+    document.getElementById("qrurl").textContent=url;
+    document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);
+    p.dataset.loaded="1";
+  }
+}
+function go(){
+  ss("Connexion...","w");
+  var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;
+  function tc(){
+    if(ui>=urls.length)ui=0;
+    c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});
+    c.on("connect",function(){
+      ss("Connecte","ok");var p="cyd/"+id+"/";
+      ["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
+      ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
+    });
+    c.on("message",function(tp,m){
+      var v=m.toString(),p="cyd/"+id+"/";
+      if(tp===p+"state")sv(v==="1");
+      if(tp===p+"dompeur")od(v);
+      if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";
+      if(tp===p+"basin1")sba(1,v);
+      if(tp===p+"basin2")sba(2,v);
+      if(tp===p+"basin3")sba(3,v);
+      if(tp===p+"basin1/raw"){rawBasin[1]=parseInt(v)||0;if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}
+      if(tp===p+"basin2/raw"){rawBasin[2]=parseInt(v)||0;if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}
+      if(tp===p+"basin3/raw"){rawBasin[3]=parseInt(v)||0;if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}
+      if(tp===p+"basin1/cal"){try{calData[1]=JSON.parse(v);saveCal();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}
+      if(tp===p+"basin2/cal"){try{calData[2]=JSON.parse(v);saveCal();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}
+      if(tp===p+"basin3/cal"){try{calData[3]=JSON.parse(v);saveCal();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}
+    });
+    c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
+    c.on("close",function(){ss("Deconnecte","er")});
+  }tc();
+}
+slInit();go();dg();
+window.addEventListener("resize",dg);
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
+</script></body></html>

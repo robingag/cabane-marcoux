@@ -1,0 +1,156 @@
+====================================================================
+  EXPLICATION DU CODE - Bouton + Lumiere pour CYD (ESP32-2432S028R)
+====================================================================
+
+Le projet est dans le dossier: cyd_lumiere/
+Il contient 2 fichiers importants:
+
+  1. platformio.ini  -> Configuration du projet (carte, broches, librairies)
+  2. src/main.cpp    -> Le code principal
+
+
+====================================================================
+  FICHIER: platformio.ini - Configuration
+====================================================================
+
+  board = esp32dev          <- Type de carte: ESP32 generique
+  upload_port = COM5        <- Port USB ou le CYD est branche
+  lib_deps = TFT_eSPI       <- Librairie pour controler l'ecran ILI9341
+
+  Les "build_flags" definissent les broches (pins) du CYD:
+
+  ECRAN (ILI9341 sur bus SPI "HSPI"):
+    TFT_MOSI = 13   <- Donnees vers l'ecran
+    TFT_MISO = 12   <- Donnees depuis l'ecran
+    TFT_SCLK = 14   <- Horloge SPI
+    TFT_CS   = 15   <- Chip Select ecran
+    TFT_DC   = 2    <- Data/Command
+    TFT_BL   = 21   <- Retro-eclairage
+
+  TACTILE (XPT2046 sur bus SPI "VSPI", bus SEPARE de l'ecran):
+    TOUCH_CS = 33    <- Chip Select tactile
+
+
+====================================================================
+  FICHIER: src/main.cpp - Code principal
+====================================================================
+
+---------- SECTION 1: Includes et broches tactiles ----------
+
+  #include <TFT_eSPI.h>   <- Librairie ecran
+  #include <SPI.h>         <- Communication SPI
+
+  Broches du tactile XPT2046 (differentes de l'ecran!):
+    T_CLK  = 25   <- Horloge
+    T_CS   = 33   <- Chip Select
+    T_DIN  = 32   <- Donnees vers le capteur
+    T_DO   = 39   <- Donnees depuis le capteur
+    T_IRQ  = 36   <- Interruption (LOW = doigt detecte)
+
+  Le tactile utilise le bus "VSPI" (separe de l'ecran qui est sur "HSPI")
+
+
+---------- SECTION 2: Dimensions ecran et positions ----------
+
+  Ecran en mode paysage: 320 x 240 pixels
+
+  LUMIERE (cercle):
+    Position: centre horizontal (160), y=75
+    Rayon: 50 pixels
+
+  BOUTON (rectangle arrondi):
+    Position: x=90, y=165
+    Taille: 140 x 50 pixels
+
+
+---------- SECTION 3: Lecture du tactile (readTouch) ----------
+
+  Comment ca marche:
+  1. Verifier si un doigt touche (pin IRQ = LOW)
+  2. Ouvrir la communication SPI avec le XPT2046
+  3. Lire 4 echantillons et faire la moyenne (reduit le bruit)
+  4. Convertir les valeurs brutes (300-3900) en coordonnees ecran
+
+  IMPORTANT: En mode paysage, les axes X/Y du capteur sont
+  INVERSES par rapport a l'ecran:
+    - Le raw Y du capteur -> position X sur l'ecran
+    - Le raw X du capteur -> position Y sur l'ecran
+
+  Les commandes SPI:
+    0xD0 = Lire position X du capteur
+    0x90 = Lire position Y du capteur
+
+
+---------- SECTION 4: Dessin de la lumiere (drawLight) ----------
+
+  Si allumee (lightOn = true):
+    - Grand cercle jaune fonce (effet de lueur)
+    - Cercle jaune vif par-dessus
+
+  Si eteinte (lightOn = false):
+    - Effacer la lueur (noir)
+    - Cercle gris fonce
+    - Contour gris clair
+
+
+---------- SECTION 5: Dessin du bouton (drawButton) ----------
+
+  Si lumiere allumee: bouton ROUGE avec texte "OFF"
+  Si lumiere eteinte: bouton BLEU avec texte "ON"
+
+  Le texte est centre au milieu du rectangle (MC_DATUM)
+
+
+---------- SECTION 6: Setup (demarrage) ----------
+
+  1. Initialiser la communication serie (debug via USB)
+  2. Initialiser le bus SPI du tactile
+  3. Initialiser l'ecran en mode paysage (rotation 1)
+  4. Allumer le retro-eclairage
+  5. Afficher le titre, la lumiere et le bouton
+
+
+---------- SECTION 7: Loop (boucle principale) ----------
+
+  Tourne en boucle toutes les 50ms:
+
+  1. Lire le tactile -> est-ce qu'un doigt touche? ou?
+  2. Si le doigt VIENT de se poser (pas deja appuye):
+     - Verifier si le touch est DANS la zone du bouton
+     - Si oui: inverser l'etat de la lumiere
+     - Redessiner la lumiere et le bouton
+  3. Memoriser l'etat du touch pour le prochain tour
+
+  Le "wasTouched" empeche le toggle multiple quand
+  on garde le doigt appuye. Ca bascule UNE SEULE FOIS
+  au moment ou le doigt se pose.
+
+
+====================================================================
+  POUR MODIFIER LE CODE
+====================================================================
+
+  Changer la taille de la lumiere:
+    -> Modifier LR (rayon, ligne 23)
+
+  Changer la position du bouton:
+    -> Modifier BX, BY, BW, BH (lignes 26-29)
+
+  Changer les couleurs:
+    -> TFT_YELLOW, TFT_RED, etc. ou tft.color565(R, G, B)
+       avec R, G, B de 0 a 255
+
+  Ajouter un 2e bouton:
+    -> Definir BX2, BY2, BW2, BH2
+    -> Creer drawButton2()
+    -> Ajouter un test dans loop()
+
+====================================================================
+  POUR TELECHARGER SUR LE CYD
+====================================================================
+
+  Depuis le dossier cyd_lumiere, lancer:
+    platformio run --target upload
+
+  Pour voir les messages de debug:
+    platformio device monitor --port COM5 --baud 115200

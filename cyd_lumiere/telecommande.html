@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYD Telecommande</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #1a1a2e;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    user-select: none;
+    padding: 20px;
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 25px; }
+  .id-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+  .id-box label { font-size: 14px; color: #aaa; }
+  .id-box input {
+    background: #2a2a4e;
+    border: 2px solid #444;
+    border-radius: 8px;
+    color: #0f0;
+    font-size: 20px;
+    font-family: monospace;
+    width: 100px;
+    text-align: center;
+    padding: 8px;
+  }
+  .id-box input:focus { outline: none; border-color: #0078d7; }
+  .id-box button {
+    background: #0078d7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .id-box button:hover { background: #005a9e; }
+  .light {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: #333;
+    border: 4px solid #555;
+    margin-bottom: 40px;
+    transition: all 0.3s ease;
+  }
+  .light.on {
+    background: #ffdd00;
+    box-shadow: 0 0 60px #ffdd00, 0 0 120px #ffaa00;
+    border-color: #ffaa00;
+  }
+  .btn {
+    padding: 18px 50px;
+    font-size: 22px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 160px;
+  }
+  .btn.off { background: #0078d7; }
+  .btn.off:active { background: #005a9e; }
+  .btn.on { background: #e94560; }
+  .btn.on:active { background: #c73650; }
+  .btn:disabled { background: #555; cursor: not-allowed; }
+  .status {
+    margin-top: 20px;
+    font-size: 13px;
+    padding: 6px 16px;
+    border-radius: 20px;
+  }
+  .status.ok { background: #1a4a1a; color: #4f4; }
+  .status.err { background: #4a1a1a; color: #f44; }
+  .status.wait { background: #4a4a1a; color: #ff4; }
+  .info {
+    margin-top: 30px;
+    font-size: 11px;
+    color: #555;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <h1>CYD Telecommande</h1>
+  <div class="subtitle">Controle a distance via Internet (MQTT)</div>
+
+  <div class="id-box">
+    <label>ID:</label>
+    <input type="text" id="devId" maxlength="4" placeholder="a48c">
+    <button onclick="connectMQTT()">Connecter</button>
+  </div>
+
+  <div class="light" id="light"></div>
+  <button class="btn off" id="btn" onclick="toggle()" disabled>ON</button>
+  <div class="status wait" id="status">Non connecte</div>
+
+  <div class="info">
+    L'ID du device est affiche en bas de l'ecran du CYD.<br>
+    Ouvre cette page depuis n'importe quel appareil connecte a Internet.
+  </div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+  let client = null;
+  let state = false;
+  let devId = '';
+
+  function updateUI(on) {
+    state = on;
+    const light = document.getElementById('light');
+    const btn = document.getElementById('btn');
+    if (on) {
+      light.classList.add('on');
+      btn.textContent = 'OFF';
+      btn.className = 'btn on';
+    } else {
+      light.classList.remove('on');
+      btn.textContent = 'ON';
+      btn.className = 'btn off';
+    }
+  }
+
+  function setStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status ' + cls;
+  }
+
+  function toggle() {
+    if (client && client.connected) {
+      client.publish('cyd/' + devId + '/cmd', 'toggle');
+    }
+  }
+
+  function connectMQTT() {
+    devId = document.getElementById('devId').value.trim().toLowerCase();
+    if (devId.length < 2) {
+      setStatus('Entre un ID valide (ex: a48c)', 'err');
+      return;
+    }
+
+    if (client) {
+      client.end();
+    }
+
+    setStatus('Connexion au broker MQTT...', 'wait');
+    document.getElementById('btn').disabled = true;
+
+    const url = 'wss://broker.hivemq.com:8884/mqtt';
+    const opts = {
+      clientId: 'web-cyd-' + devId + '-' + Math.random().toString(16).substr(2, 4),
+      clean: true,
+      connectTimeout: 10000
+    };
+
+    client = mqtt.connect(url, opts);
+
+    client.on('connect', function() {
+      setStatus('Connecte! ID: ' + devId, 'ok');
+      document.getElementById('btn').disabled = false;
+      client.subscribe('cyd/' + devId + '/state');
+    });
+
+    client.on('message', function(topic, msg) {
+      const val = msg.toString();
+      if (topic === 'cyd/' + devId + '/state') {
+        updateUI(val === '1');
+      }
+    });
+
+    client.on('error', function(err) {
+      setStatus('Erreur: ' + err.message, 'err');
+    });
+
+    client.on('close', function() {
+      setStatus('Deconnecte', 'err');
+      document.getElementById('btn').disabled = true;
+    });
+  }
+
+  // Auto-fill ID from URL hash (e.g. telecommande.html#a48c)
+  if (window.location.hash) {
+    document.getElementById('devId').value = window.location.hash.substring(1);
+    connectMQTT();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+================================================================================
+     SCHEMA DE BRANCHEMENT — ESP32 CYD (2432S028R) — CABANE MARCOUX
+================================================================================
+
+    Configuration actuelle:
+    - GPIO 27 (CN1) → Limit switch dompeur
+    - GPIO 22 (CN1/P3) → Bassin 1 JSN-SR04T (2 fils)
+    - Bassins 2-3 → MQTT seulement (pas de capteur)
+    - Vacuum → MQTT seulement (pas de GPIO)
+
+
+================================================================================
+CONNECTEUR CN1 (face arriere, JST 1.25mm 4 pins)
+================================================================================
+
+    Vue du connecteur CN1:
+    ┌──────────────────┐
+    │ 1    2    3    4 │
+    │GND  IO22 IO27 3V3│
+    └──┬───┬───┬───┬───┘
+       │   │   │   │
+       │   │   │   └── 3.3V (alimentation PCF8574 futur)
+       │   │   │
+       │   │   └────── LIMIT SWITCH DOMPEUR
+       │   │
+       │   └────────── BASSIN 1 (JSN-SR04T, 2 fils)
+       │
+       └────────────── GND COMMUN
+
+
+================================================================================
+1. LIMIT SWITCH DOMPEUR (GPIO 27 — CN1 pin 3)
+================================================================================
+
+    CN1                      Limit Switch (NO)
+    ┌────┐                  ┌──────────┐
+    │    │                  │          │
+    │ 27 ├──────────────────┤ COM      │
+    │(pin│                  │          │
+    │ 3) │                  │          │
+    │    │                  │          │
+    │GND ├──────────────────┤ NO       │
+    │(pin│                  │(Normally │
+    │ 1) │                  │  Open)   │
+    └────┘                  └──────────┘
+
+    - Pull-up interne actif (INPUT_PULLUP)
+    - Pas de resistance externe necessaire
+    - Switch ouvert = HIGH, ferme = LOW
+    - Interrupt CHANGE: mesure temps entre fronts
+    - Debounce: 200ms
+
+
+================================================================================
+2. BASSIN 1 — JSN-SR04T 2 FILS (GPIO 22 — CN1 pin 2)
+================================================================================
+
+    CN1                      JSN-SR04T
+    ┌────┐                  ┌──────────┐
+    │    │                  │          │
+    │ 22 ├────────┬─────────┤ TRIG     │
+    │(pin│        │         │          │
+    │ 2) │        └─────────┤ ECHO     │
+    │    │                  │          │
+    │GND ├──────────────────┤ GND      │
+    │(pin│                  │          │
+    │ 1) │                  └────┬─────┘
+    └────┘                       │
+                            ┌────┴─────┐
+                            │  Sonde   │
+                            │ etanche  │
+                            │(dans le  │
+                            │ bassin)  │
+                            └──────────┘
+
+    IMPORTANT: TRIG et ECHO relies ensemble sur le meme fil GPIO 22
+    Le pin alterne entre OUTPUT (pulse) et INPUT (echo)
+
+    Alimentation JSN-SR04T: 5V externe (voir section alimentation)
+
+
+================================================================================
+BRANCHEMENT PHYSIQUE SUR LE CN1
+================================================================================
+
+                    Connecteur CN1 (JST 1.25mm)
+                    ┌─────────────────────────┐
+                    │  GND  IO22  IO27  3V3   │
+                    │   ●     ●     ●    ●    │
+                    └───┬─────┬─────┬────┬────┘
+                        │     │     │    │
+        ┌───────────────┤     │     │    │
+        │               │     │     │    └── (libre pour futur I2C)
+        │   ┌───────────┼─────┘     │
+        │   │           │           │
+        │   │   ┌───────┼───────────┘
+        │   │   │       │
+        ▼   ▼   ▼       │
+    ┌───────────────┐   │    ┌──────────────┐
+    │  JSN-SR04T    │   │    │ Limit Switch │
+    │               │   │    │              │
+    │  TRIG ────────┤◄──┘    │  COM ────────┤◄── IO27
+    │  ECHO ────────┤◄──┘    │  NO  ────────┤◄── GND
+    │  VCC ─────────┤◄─ 5V   │              │
+    │  GND ─────────┤◄──┘    └──────────────┘
+    └───────────────┘
+
+
+================================================================================
+ALIMENTATION
+================================================================================
+
+    ⚠ Le JSN-SR04T a besoin de 5V, pas 3.3V!
+    Le connecteur CN1 fournit seulement 3.3V.
+
+    Option 1: Alimenter le JSN-SR04T depuis le 5V USB
+    ┌──────────┐
+    │ USB 5V   ├──┬── ESP32 CYD (via USB)
+    │          │  │
+    │          │  └── VCC JSN-SR04T (5V)
+    └──────────┘
+
+    Option 2: Prendre le 5V sur le connecteur P1
+    P1 Connecteur:
+    ┌────────────────┐
+    │ GND  RX  TX  5V│  ← pin 4 = 5V
+    └──────────────┬─┘
+                   └── VCC JSN-SR04T
+
+    GND commun ──┬── GND CN1 (pin 1)
+                 ├── GND JSN-SR04T
+                 └── GND Limit Switch (via CN1 pin 1)
+
+
+================================================================================
+RESUME
+================================================================================
+
+    ┌──────────────┬────────┬──────────┬──────────────────────┐
+    │ Composant    │ GPIO   │Connecteur│ Fils                 │
+    ├──────────────┼────────┼──────────┼──────────────────────┤
+    │ Limit Switch │ 27     │ CN1 pin 3│ IO27→COM, GND→NO    │
+    │ Bassin 1     │ 22     │ CN1 pin 2│ IO22→TRIG+ECHO      │
+    ├──────────────┼────────┼──────────┼──────────────────────┤
+    │ Bassin 2     │ --     │ MQTT     │ pas de capteur       │
+    │ Bassin 3     │ --     │ MQTT     │ pas de capteur       │
+    │ Vacuum       │ --     │ MQTT     │ pas de GPIO          │
+    ├──────────────┼────────┼──────────┼──────────────────────┤
+    │ TOTAL HW     │ 2 GPIO │ CN1 seul │ ~5 fils              │
+    └──────────────┴────────┴──────────┴──────────────────────┘
+
+    ⚠ Pour ajouter plus de capteurs dans le futur:
+    - Dessouder LED RGB → libere GPIO 4, 16, 17
+    - Ou ajouter expandeur I2C PCF8574 sur CN1 (SDA=22, SCL=27)
+
+================================================================================
