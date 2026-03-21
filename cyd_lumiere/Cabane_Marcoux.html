@@ -331,7 +331,21 @@ function dg(){
   if(hist[n-1]>hist[0]){a.textContent="\u25B2";a.className="ar u"}
   else{a.textContent="\u25BC";a.className="ar d"}
 }
-function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
+function od(v){
+  if(v==="--:--"){hist=[];dg();return}
+  var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}
+}
+var _blinkTimer=null;
+function ol(v){
+  var el=document.getElementById("dmp");
+  if(_blinkTimer){clearInterval(_blinkTimer);_blinkTimer=null}
+  if(v==="--:--"){el.textContent="--:--";el.style.color="#64748b";el.style.visibility="visible";return}
+  el.textContent=v;
+  var p=v.split(":");if(p.length===2){var sec=parseInt(p[0])*60+parseInt(p[1]);
+    if(sec>=900){el.style.color="#ef4444";_blinkTimer=setInterval(function(){el.style.visibility=el.style.visibility==="hidden"?"visible":"hidden"},500)}
+    else{el.style.color="#f59e0b";el.style.visibility="visible"}
+  }
+}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
@@ -356,13 +370,14 @@ function go(){
     c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});
     c.on("connect",function(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
-      ["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
+      ["state","dompeur","dompeur/live","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin1/cal","basin2/cal","basin3/cal"].forEach(function(t){c.subscribe(p+t)});
     });
     c.on("message",function(tp,m){
       var v=m.toString(),p="cyd/"+id+"/";
       if(tp===p+"state")sv(v==="1");
       if(tp===p+"dompeur")od(v);
+      if(tp===p+"dompeur/live")ol(v);
       if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";
       if(tp===p+"basin1")sba(1,v);
       if(tp===p+"basin2")sba(2,v);

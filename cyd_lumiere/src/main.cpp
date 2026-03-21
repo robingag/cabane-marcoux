@@ -22,6 +22,7 @@ String deviceId;         // Last 6 hex of MAC (unique ID)
 String mqttTopicState;   // cyd/{id}/state
 String mqttTopicCmd;     // cyd/{id}/cmd
 String mqttTopicDompeur; // cyd/{id}/dompeur
+String mqttTopicDompeurLive; // cyd/{id}/dompeur/live
 String mqttTopicTemp;    // cyd/{id}/temp
 String mqttTopicBasin1;  // cyd/{id}/basin1
 String mqttTopicBasin2;  // cyd/{id}/basin2
@@ -137,6 +138,9 @@ const char* VACUUM_PIN_CODE = "777";
 
 // Sensor data
 String dompeurTime = "--:--";
+bool dompeurReset = false;  // true = reset apres 30 min
+#define DOMPEUR_ALERT_MS  (15UL * 60 * 1000)  // 15 min
+#define DOMPEUR_RESET_MS  (30UL * 60 * 1000)  // 30 min
 float temperature = 0.0;
 float humidity = 0.0;
 int bleBattery = -1;
@@ -480,18 +484,45 @@ void drawDompeurCard() {
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
   tft.drawString("DOMPEUR", cx + 10, cy + 6);
-  tft.setTextSize(3);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(C_CYAN, C_CARD);
-  tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
-  // Compteur temps reel depuis dernier front
-  unsigned long elapsed = (lsLastEdge > 0) ? (millis() - lsLastEdge) / 1000 : 0;
+
+  unsigned long elapsedMs = (lsLastEdge > 0) ? (millis() - lsLastEdge) : 0;
+  unsigned long elapsed = elapsedMs / 1000;
   int eMin = elapsed / 60;
   int eSec = elapsed % 60;
+
+  // Dernier cycle ou reset
+  tft.setTextSize(3);
+  tft.setTextDatum(MC_DATUM);
+  if (dompeurReset) {
+    tft.setTextColor(C_TXT_GRAY, C_CARD);
+    tft.drawString("--:--", cx + cw / 2, cy + 32);
+  } else if (lsLastEdge > 0 && elapsedMs >= DOMPEUR_ALERT_MS) {
+    // >15 min: clignotement rouge (toggle chaque 500ms)
+    bool blink = (millis() / 500) % 2;
+    uint16_t col = blink ? C_RED : C_CARD;
+    tft.setTextColor(col, C_CARD);
+    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
+  } else {
+    tft.setTextColor(C_CYAN, C_CARD);
+    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
+  }
+
+  // Compteur temps reel depuis dernier front
   char eBuf[8];
-  snprintf(eBuf, sizeof(eBuf), "%02d:%02d", eMin, eSec);
-  tft.setTextSize(2);
-  tft.setTextColor(C_GREEN, C_CARD);
+  if (dompeurReset || lsLastEdge == 0) {
+    snprintf(eBuf, sizeof(eBuf), "--:--");
+    tft.setTextSize(2);
+    tft.setTextColor(C_TXT_GRAY, C_CARD);
+  } else if (elapsedMs >= DOMPEUR_ALERT_MS) {
+    snprintf(eBuf, sizeof(eBuf), "%02d:%02d", eMin, eSec);
+    bool blink = (millis() / 500) % 2;
+    tft.setTextSize(2);
+    tft.setTextColor(blink ? C_RED : C_CARD, C_CARD);
+  } else {
+    snprintf(eBuf, sizeof(eBuf), "%02d:%02d", eMin, eSec);
+    tft.setTextSize(2);
+    tft.setTextColor(C_GREEN, C_CARD);
+  }
   tft.drawString(eBuf, cx + cw / 2, cy + 58);
 }
 
@@ -1742,6 +1773,7 @@ void setup() {
   mqttTopicState = "cyd/" + deviceId + "/state";
   mqttTopicCmd = "cyd/" + deviceId + "/cmd";
   mqttTopicDompeur = "cyd/" + deviceId + "/dompeur";
+  mqttTopicDompeurLive = "cyd/" + deviceId + "/dompeur/live";
   mqttTopicTemp = "cyd/" + deviceId + "/temp";
   mqttTopicHumidity = "cyd/" + deviceId + "/humidity";
   mqttTopicBasin1 = "cyd/" + deviceId + "/basin1";
@@ -1954,6 +1986,7 @@ void loop() {
   // Process limit switch cycle
   if (lsNewCycle) {
     lsNewCycle = false;
+    dompeurReset = false;  // nouveau cycle, on reactive l'affichage
     unsigned long ms = lsCycleMs;
     int totalSec = ms / 1000;
     int mins = totalSec / 60;
@@ -1964,11 +1997,42 @@ void loop() {
     Serial.printf("Dompeur cycle: %lums = %s\n", ms, buf);
   }
 
-  // Rafraichir compteur dompeur chaque seconde
+  // Reset dompeur apres 30 min sans front
+  if (!dompeurReset && lsLastEdge > 0 && (millis() - lsLastEdge) >= DOMPEUR_RESET_MS) {
+    dompeurReset = true;
+    dompeurTime = "--:--";
+    graphCount = 0;  // reset courbe tendance
+    memset(dompeurHist, 0, sizeof(dompeurHist));
+    Serial.println("Dompeur: 30 min sans front, reset affichage + tendance");
+    if (mqtt.connected()) {
+      mqtt.publish(mqttTopicDompeur.c_str(), "--:--", true);
+      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
+    }
+    if (currentScreen == SCREEN_MAIN && !menuOpen) {
+      drawTrendGraph();
+    }
+  }
+
+  // Rafraichir compteur dompeur chaque seconde (500ms en mode alerte pour le clignotement)
   static unsigned long lastDompeurRefresh = 0;
-  if (currentScreen == SCREEN_MAIN && !menuOpen && millis() - lastDompeurRefresh > 1000) {
+  static unsigned long lastDompeurMqtt = 0;
+  unsigned long dompeurElapsed = (lsLastEdge > 0) ? (millis() - lsLastEdge) : 0;
+  unsigned long refreshRate = (dompeurElapsed >= DOMPEUR_ALERT_MS && !dompeurReset) ? 500 : 1000;
+  if (currentScreen == SCREEN_MAIN && !menuOpen && millis() - lastDompeurRefresh > refreshRate) {
     lastDompeurRefresh = millis();
     drawDompeurCard();
+  }
+  // Publier compteur live sur MQTT chaque seconde
+  if (mqtt.connected() && millis() - lastDompeurMqtt >= 1000) {
+    lastDompeurMqtt = millis();
+    if (dompeurReset || lsLastEdge == 0) {
+      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
+    } else {
+      unsigned long sec = dompeurElapsed / 1000;
+      char liveBuf[8];
+      snprintf(liveBuf, sizeof(liveBuf), "%02lu:%02lu", sec / 60, sec % 60);
+      mqtt.publish(mqttTopicDompeurLive.c_str(), liveBuf, true);
+    }
   }
 
   int sx, sy;
