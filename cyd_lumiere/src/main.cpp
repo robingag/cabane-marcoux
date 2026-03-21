@@ -40,38 +40,30 @@ unsigned long lastMqttRetry = 0;
 #define T_IRQ  36
 
 // Limit switch for dompeur timing (GPIO 27, P3 connector)
-#define LIMIT_SW_PIN 27
+// REMOVED: dompeur sensor moved to WROOM Hub
+// #define LIMIT_SW_PIN 27
 
 // JSN-SR04T ultrasonic sensor
 // Bassin 1: 2-wire on GPIO 22 (CN1/P3 connector)
 // JSN-SR04T ultrasonic sensor
 // Bassin 1: 4-wire on GPIO 22 (Trig) + GPIO 35 (Echo) - P3 connector
-#define US1_TRIG 22
-#define US1_ECHO 35
+// REMOVED: ultrasonic sensor moved to WROOM Hub
+// #define US1_TRIG 22
+// #define US1_ECHO 35
 
 // Simulateur de pulses dompeur (P3 connecteur)
-#define SIM_PULSE_PIN 1  // GPIO 1 = TX sur connecteur P1
+// REMOVED: simulator moved to WROOM Hub
+// #define SIM_PULSE_PIN 1
 
-volatile unsigned long lsLastEdge = 0;
-volatile unsigned long lsCycleMs = 0;
-volatile bool lsNewCycle = false;
+// Display-only: dompeur data comes from MQTT/BLE
+unsigned long lsLastEdge = 0;  // virtual edge time from Hub
+// volatile unsigned long lsCycleMs = 0;  // REMOVED
+// volatile bool lsNewCycle = false;  // REMOVED
 
 // Simulation pulses: true=actif, false=capteur reel
-bool simPulse = false;  // WROOM Hub gere les capteurs
-unsigned long simNextToggle = 0;
-bool simState = false;
+// REMOVED: simPulse variables (Hub handles sensors)
 
-void IRAM_ATTR limitSwitchISR() {
-  unsigned long now = millis();
-  unsigned long delta = now - lsLastEdge;
-  if (delta > 200) {  // debounce 200ms
-    if (lsLastEdge > 0) {
-      lsCycleMs = delta;
-      lsNewCycle = true;
-    }
-    lsLastEdge = now;
-  }
-}
+// REMOVED: limitSwitchISR() - dompeur handled by WROOM Hub
 
 SPIClass touchSPI(VSPI);
 
@@ -173,36 +165,11 @@ void addDompeurPoint(int seconds) {
   }
 }
 
-unsigned long lastUltrasonicRead = 0;
-const unsigned long US_INTERVAL = 500; // lecture chaque 500ms
+// REMOVED: ultrasonic read interval (Hub handles sensors)
 
-// Lecture 2 fils: meme pin pour trig et echo
-long readUltrasonic4Wire(int trigPin, int echoPin) {
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  long duration = pulseIn(echoPin, HIGH, 30000);
-  if (duration == 0) return -1;
-  return duration / 58;
-}
+// REMOVED: readUltrasonic4Wire() - sensor moved to WROOM Hub
 
-// Convertir distance en pourcentage avec calibration 2 points
-// calLow = distance quand bassin vide (loin), calHigh = distance quand plein (proche)
-int distanceToPercent(long distCm, int idx) {
-  if (distCm < 0) return -1; // erreur lecture
-  if (calLow[idx] < 0 || calHigh[idx] < 0) {
-    // Pas calibre: retourner distance brute comme raw
-    rawBasin[idx] = (int)distCm;
-    return 0;
-  }
-  rawBasin[idx] = (int)distCm;
-  // calLow = distance vide (grande), calHigh = distance plein (petite)
-  // Inverser: plus la distance est petite, plus le niveau est haut
-  int pct = map(distCm, calLow[idx], calHigh[idx], 0, 100);
-  return constrain(pct, 0, 100);
-}
+// REMOVED: distanceToPercent() - calculation moved to WROOM Hub
 
 // ---- Screen states ----
 enum Screen { SCREEN_MAIN, SCREEN_WIFI_LIST, SCREEN_WIFI_PASS, SCREEN_WIFI_CONNECTING, SCREEN_WIFI_FAIL, SCREEN_QR_LOCAL, SCREEN_QR_REMOTE, SCREEN_INFO, SCREEN_PIN, SCREEN_CALIB };
@@ -264,13 +231,8 @@ void drawBasinCards();
 // ---- MQTT ----
 void publishState() {
   if (mqtt.connected()) {
+    // Display-only: only publish vacuum state, Hub publishes sensor data
     mqtt.publish(mqttTopicState.c_str(), lightOn ? "1" : "0", true);
-    mqtt.publish(mqttTopicDompeur.c_str(), dompeurTime.c_str(), true);
-    mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
-    mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
-    mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
-    mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
-    mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
   }
 }
 
@@ -395,6 +357,15 @@ void mqttConnect() {
     mqtt.subscribe(mqttTopicBasin2.c_str());
     mqtt.subscribe(mqttTopicBasin3.c_str());
     mqtt.subscribe(mqttTopicCal.c_str());
+    mqtt.subscribe(mqttTopicDompeurLive.c_str());
+    mqtt.subscribe(mqttTopicHumidity.c_str());
+    // Subscribe to raw basin values for calibration screen
+    String rawSub1 = "cyd/" + deviceId + "/basin1/raw";
+    String rawSub2 = "cyd/" + deviceId + "/basin2/raw";
+    String rawSub3 = "cyd/" + deviceId + "/basin3/raw";
+    mqtt.subscribe(rawSub1.c_str());
+    mqtt.subscribe(rawSub2.c_str());
+    mqtt.subscribe(rawSub3.c_str());
     publishState();
   } else {
     Serial.printf("MQTT: echec (rc=%d)\n", mqtt.state());
@@ -1711,9 +1682,10 @@ class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
         }
         Serial.printf(">>> CBM BLE: B2=%dcm(%d%%) B3=%dcm(%d%%)\n", d2, basin2, d3, basin3);
         // Publier sur MQTT
-        if (mqtt.connected()) {
-          mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
-          mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
+        // Display-only: basin data published by Hub
+        if (false && mqtt.connected()) {
+          // mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
+          // mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
           String raw2Topic = "cyd/" + deviceId + "/basin2/raw";
           String raw3Topic = "cyd/" + deviceId + "/basin3/raw";
           mqtt.publish(raw2Topic.c_str(), String(rawBasin[1]).c_str(), true);
@@ -1863,19 +1835,12 @@ void setup() {
   pinMode(T_IRQ, INPUT);
 
   // Limit switch input with pull-up (active LOW)
-  pinMode(LIMIT_SW_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(LIMIT_SW_PIN), limitSwitchISR, CHANGE);
+  // REMOVED: dompeur ISR setup (Hub handles sensors)
 
-  pinMode(US1_TRIG, OUTPUT);
-  pinMode(US1_ECHO, INPUT);
+  // REMOVED: ultrasonic GPIO setup (Hub handles sensors)
 
   // Simulateur pulses sur GPIO 1 (TX/P1)
-  if (simPulse) {
-    pinMode(SIM_PULSE_PIN, OUTPUT);
-    digitalWrite(SIM_PULSE_PIN, LOW);
-    simNextToggle = millis() + random(30000, 60000);
-    Serial.println("SIM PULSE actif sur GPIO 1/TX (30-60s)");
-  }
+  // REMOVED: simPulse setup
 
   // Display
   tft.init();
@@ -2014,73 +1979,18 @@ void loop() {
     Serial.print(temperature);
     Serial.print("C Hum: ");
     Serial.println(humidity);
-    // Publier temp + humidity via MQTT
-    if (mqtt.connected()) {
-      mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
-      mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
-      Serial.println("MQTT temp/hum published");
-    }
+    // Display-only: temp/humidity received via MQTT from Hub
     // Rafraichir ecran
     if (currentScreen == SCREEN_MAIN && !menuOpen) drawTempCard();
   }
 
-  // Lecture periodique capteur ultrasonique (bassin 1 seulement)
-  if (millis() - lastUltrasonicRead >= US_INTERVAL) {
-    lastUltrasonicRead = millis();
+  // REMOVED: ultrasonic reading (Hub handles bassin 1 sensor via MQTT)
 
-    long d1 = readUltrasonic4Wire(US1_TRIG, US1_ECHO);
-    int p1 = distanceToPercent(d1, 0);
-    if (p1 >= 0 && p1 != basin1) {
-      basin1 = p1;
-      if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
-      if (mqtt.connected()) {
-        mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
-        // Publier valeur brute pour dashboard calibration
-        String rawTopic = "cyd/" + deviceId + "/basin1/raw";
-        mqtt.publish(rawTopic.c_str(), String(rawBasin[0]).c_str(), true);
-      }
-      Serial.printf("Bassin 1: %dcm = %d%%\n", (int)d1, basin1);
-    }
-  }
+  // REMOVED: pulse simulator (Hub handles sensors)
 
-  // Simulateur de pulses aleatoires (30s-60s)
-  if (simPulse && millis() > simNextToggle) {
-    simState = !simState;
-    digitalWrite(SIM_PULSE_PIN, simState ? HIGH : LOW);
-    unsigned long interval = random(30000, 60000);
-    simNextToggle = millis() + interval;
-    Serial.printf("SIM: GPIO1=%d, prochain dans %lus\n", simState, interval / 1000);
-  }
+  // REMOVED: local dompeur cycle processing (Hub handles and publishes via MQTT)
 
-  // Process limit switch cycle
-  if (lsNewCycle) {
-    lsNewCycle = false;
-    dompeurReset = false;  // nouveau cycle, on reactive l'affichage
-    unsigned long ms = lsCycleMs;
-    int totalSec = ms / 1000;
-    int mins = totalSec / 60;
-    int secs = totalSec % 60;
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%02d:%02d", mins, secs);
-    updateDompeurTime(String(buf));
-    Serial.printf("Dompeur cycle: %lums = %s\n", ms, buf);
-  }
-
-  // Reset dompeur apres 30 min sans front
-  if (!dompeurReset && lsLastEdge > 0 && (millis() - lsLastEdge) >= DOMPEUR_RESET_MS) {
-    dompeurReset = true;
-    dompeurTime = "--:--";
-    graphCount = 0;  // reset courbe tendance
-    memset(dompeurHist, 0, sizeof(dompeurHist));
-    Serial.println("Dompeur: 30 min sans front, reset affichage + tendance");
-    if (mqtt.connected()) {
-      mqtt.publish(mqttTopicDompeur.c_str(), "--:--", true);
-      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
-    }
-    if (currentScreen == SCREEN_MAIN && !menuOpen) {
-      drawTrendGraph();
-    }
-  }
+  // Dompeur reset is now handled by Hub via MQTT
 
   // Rafraichir compteur dompeur chaque seconde (500ms en mode alerte pour le clignotement)
   static unsigned long lastDompeurRefresh = 0;
@@ -2091,18 +2001,7 @@ void loop() {
     lastDompeurRefresh = millis();
     drawDompeurCard();
   }
-  // Publier compteur live sur MQTT chaque seconde
-  if (mqtt.connected() && millis() - lastDompeurMqtt >= 1000) {
-    lastDompeurMqtt = millis();
-    if (dompeurReset || lsLastEdge == 0) {
-      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
-    } else {
-      unsigned long sec = dompeurElapsed / 1000;
-      char liveBuf[8];
-      snprintf(liveBuf, sizeof(liveBuf), "%02lu:%02lu", sec / 60, sec % 60);
-      mqtt.publish(mqttTopicDompeurLive.c_str(), liveBuf, true);
-    }
-  }
+  // REMOVED: local dompeur MQTT live publishing (Hub publishes dompeur/live)
 
   int sx, sy;
   bool touched = readTouch(sx, sy);
