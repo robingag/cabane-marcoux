@@ -1689,6 +1689,40 @@ class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
     Serial.print(devName.c_str());
     Serial.print("' rssi=");
     Serial.println(device->getRSSI());
+    // --- Capteur Bassins WROOM (nom "CBM", magic 0xCB) ---
+    if (devName == "CBM" && device->haveManufacturerData()) {
+      std::string mfData = device->getManufacturerData();
+      // NimBLE: 2 bytes company ID (0xFFFF) + 6 bytes payload
+      if (mfData.length() >= 8 && (uint8_t)mfData[2] == 0xCB) {
+        uint16_t d2 = (uint8_t)mfData[3] | ((uint8_t)mfData[4] << 8);
+        uint16_t d3 = (uint8_t)mfData[5] | ((uint8_t)mfData[6] << 8);
+        rawBasin[1] = d2;
+        rawBasin[2] = d3;
+        // Appliquer calibration si disponible
+        if (calLow[1] >= 0 && calHigh[1] >= 0 && calLow[1] != calHigh[1]) {
+          basin2 = constrain(map(d2, calLow[1], calHigh[1], 0, 100), 0, 100);
+        } else {
+          basin2 = d2;  // valeur brute si pas calibre
+        }
+        if (calLow[2] >= 0 && calHigh[2] >= 0 && calLow[2] != calHigh[2]) {
+          basin3 = constrain(map(d3, calLow[2], calHigh[2], 0, 100), 0, 100);
+        } else {
+          basin3 = d3;
+        }
+        Serial.printf(">>> CBM BLE: B2=%dcm(%d%%) B3=%dcm(%d%%)\n", d2, basin2, d3, basin3);
+        // Publier sur MQTT
+        if (mqtt.connected()) {
+          mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
+          mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
+          String raw2Topic = "cyd/" + deviceId + "/basin2/raw";
+          String raw3Topic = "cyd/" + deviceId + "/basin3/raw";
+          mqtt.publish(raw2Topic.c_str(), String(rawBasin[1]).c_str(), true);
+          mqtt.publish(raw3Topic.c_str(), String(rawBasin[2]).c_str(), true);
+        }
+        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+      }
+    }
+
     // IBS-TH2 advertise comme "sps" ou "iBBQ" ou contient "Inkbird"
     bool isInkbird = (devName == "sps" || devName == "iBBQ" || devName.find("Inkbird") != std::string::npos || devName.find("IBS") != std::string::npos);
     // Aussi checker par manufacturer data meme sans nom
