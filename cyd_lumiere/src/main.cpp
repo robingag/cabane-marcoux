@@ -57,7 +57,7 @@ volatile unsigned long lsCycleMs = 0;
 volatile bool lsNewCycle = false;
 
 // Simulation pulses: true=actif, false=capteur reel
-bool simPulse = true;
+bool simPulse = false;  // WROOM Hub gere les capteurs
 unsigned long simNextToggle = 0;
 bool simState = false;
 
@@ -1720,6 +1720,41 @@ class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
           mqtt.publish(raw3Topic.c_str(), String(rawBasin[2]).c_str(), true);
         }
         if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+      }
+    }
+
+    // --- WROOM Hub (nom "CBM-HUB", magic 0xCA) ---
+    if (devName == "CBM-HUB" && device->haveManufacturerData()) {
+      std::string mfData = device->getManufacturerData();
+      // NimBLE: 2 bytes company ID (0xFFFF) + 9 bytes payload
+      if (mfData.length() >= 11 && (uint8_t)mfData[2] == 0xCA) {
+        uint16_t dmpSec = (uint8_t)mfData[3] | ((uint8_t)mfData[4] << 8);
+        int b1 = (uint8_t)mfData[5];
+        int b2 = (uint8_t)mfData[6];
+        int b3 = (uint8_t)mfData[7];
+        int16_t tempX10 = (uint8_t)mfData[8] | ((uint8_t)mfData[9] << 8);
+        uint8_t flags = (uint8_t)mfData[10];
+        bool alert = flags & 0x01;
+        bool reset = flags & 0x02;
+        // Update dompeur
+        if (reset) {
+          dompeurReset = true;
+          dompeurTime = "--:--";
+          lsLastEdge = 0;
+        } else if (dmpSec > 0) {
+          dompeurReset = false;
+          lsLastEdge = millis() - (unsigned long)dmpSec * 1000;
+        }
+        // Update basins
+        basin1 = b1; basin2 = b2; basin3 = b3;
+        // Update temp
+        temperature = tempX10 / 10.0f;
+        Serial.println(">>> HUB BLE received");
+        // Refresh display
+        if (currentScreen == SCREEN_MAIN && !menuOpen) {
+          drawDompeurCard();
+          drawBasinCards();
+        }
       }
     }
 
