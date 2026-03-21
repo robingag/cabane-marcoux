@@ -15,12 +15,12 @@
 #include <NimBLEDevice.h>
 
 // JSN-SR04T Bassin 2 (4-wire)
-#define B2_TRIG 16
-#define B2_ECHO 17
+#define B2_TRIG 25
+#define B2_ECHO 26
 
 // JSN-SR04T Bassin 3 (4-wire)
-#define B3_TRIG 18
-#define B3_ECHO 19
+#define B3_TRIG 27
+#define B3_ECHO 33
 
 // LED interne pour debug
 #define LED_PIN 2
@@ -39,9 +39,9 @@ uint16_t distB3 = 0;  // distance bassin 3 en cm
 // Lecture ultrasonique JSN-SR04T (4-wire)
 long readDistanceCm(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
+  delayMicroseconds(5);
   digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
+  delayMicroseconds(20);
   digitalWrite(trigPin, LOW);
 
   long duration = pulseIn(echoPin, HIGH, 30000);  // timeout 30ms
