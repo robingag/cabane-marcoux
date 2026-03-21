@@ -38,17 +38,19 @@ bool dompeurReset = false;
 #define DOMPEUR_ALERT_MS  (15UL * 60 * 1000)
 #define DOMPEUR_RESET_MS  (30UL * 60 * 1000)
 
+// Dompeur: software debounce with stable state detection
+// Only count a transition when the pin stays stable for STABLE_MS
+volatile unsigned long lastChange = 0;    // last raw edge timestamp
+volatile bool lastStableState = true;     // last confirmed stable state (HIGH = pullup)
+volatile bool pendingState = true;        // state we're waiting to confirm
+#define STABLE_MS 500  // pin must be stable 500ms to confirm transition
+
+// ISR just records raw edges
 void IRAM_ATTR limitSwitchISR() {
-  unsigned long now = millis();
-  unsigned long delta = now - lsLastEdge;
-  if (delta > 200) {
-    if (lsLastEdge > 0) {
-      lsCycleMs = delta;
-      lsNewCycle = true;
-    }
-    lsLastEdge = now;
-  }
+  lastChange = millis();
+  pendingState = digitalRead(DOMPEUR_PIN);
 }
+
 
 // ========== SENSOR DATA ==========
 float temperature = 0.0;
@@ -138,17 +140,24 @@ class HubScanCallback : public NimBLEAdvertisedDeviceCallbacks {
         && device->haveManufacturerData()) {
       std::string mfr = device->getManufacturerData();
       if (mfr.size() >= 9) {
-        int16_t rawTemp = (uint8_t)mfr[2] | ((uint8_t)mfr[3] << 8);
-        int16_t rawHum  = (uint8_t)mfr[4] | ((uint8_t)mfr[5] << 8);
+        // Debug: print raw bytes
+        Serial.printf(">>> Inkbird raw (%d bytes): ", (int)mfr.size());
+        for (int i = 0; i < (int)mfr.size() && i < 12; i++)
+          Serial.printf("%02X ", (uint8_t)mfr[i]);
+        Serial.println();
+
+        // NimBLE strips company ID — temp at [0-1], hum at [2-3]
+        int16_t rawTemp = (uint8_t)mfr[0] | ((uint8_t)mfr[1] << 8);
+        int16_t rawHum  = (uint8_t)mfr[2] | ((uint8_t)mfr[3] << 8);
         float t = rawTemp / 100.0;
         float h = rawHum / 100.0;
+        Serial.printf(">>> Inkbird parsed: rawT=%d(%.1fC) rawH=%d(%.1f%%)\n", rawTemp, t, rawHum, h);
         if (t >= -40 && t <= 80 && h >= 0 && h <= 100) {
           temperature = t;
           humidity = h;
-          Serial.printf(">>> BLE Inkbird: T=%.1fC H=%.1f%%\n", temperature, humidity);
         }
-        if (mfr.size() >= 10) {
-          int bat = (uint8_t)mfr[9];
+        if (mfr.size() >= 8) {
+          int bat = (uint8_t)mfr[7];  // battery at byte 7
           if (bat >= 0 && bat <= 100) bleBattery = bat;
         }
       }
@@ -455,11 +464,27 @@ void loop() {
     }
   }
 
-  // Dompeur: new cycle detected
-  if (lsNewCycle) {
-    lsNewCycle = false;
-    dompeurReset = false;
-    updateDompeurTime(lsCycleMs);
+  // Dompeur: check stable state transition (software debounce)
+  if (lastChange > 0 && (millis() - lastChange) >= STABLE_MS) {
+    bool currentPin = digitalRead(DOMPEUR_PIN);
+    if (currentPin == pendingState && currentPin != lastStableState) {
+      // State changed and stable for 500ms — real transition
+      lastStableState = currentPin;
+      unsigned long now = millis();
+      if (lsLastEdge > 0) {
+        unsigned long delta = now - lsLastEdge;
+        if (delta >= 20000) {  // minimum 20s between real cycles
+          lsCycleMs = delta;
+          dompeurReset = false;
+          updateDompeurTime(lsCycleMs);
+        }
+      }
+      lsLastEdge = now;
+      lastChange = 0;  // reset
+    } else if (currentPin != pendingState) {
+      // Pin bounced back — not stable, ignore
+      lastChange = 0;
+    }
   }
 
   // Dompeur: reset after 30 min
@@ -475,16 +500,16 @@ void loop() {
     Serial.println("Dompeur: RESET (30 min)");
   }
 
-  // Dompeur: publish live counter every second
+  // Dompeur: publish live counter every second (always retained)
   if (mqtt.connected() && millis() - lastDompeurMqtt >= 1000) {
     lastDompeurMqtt = millis();
-    if (dompeurReset || lsLastEdge == 0) {
-      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
-    } else {
+    if (!dompeurReset && lsLastEdge > 0) {
       unsigned long sec = (millis() - lsLastEdge) / 1000;
       char liveBuf[8];
       snprintf(liveBuf, sizeof(liveBuf), "%02lu:%02lu", sec / 60, sec % 60);
       mqtt.publish(mqttTopicDompeurLive.c_str(), liveBuf, true);
+    } else {
+      mqtt.publish(mqttTopicDompeurLive.c_str(), "--:--", true);
     }
   }
 

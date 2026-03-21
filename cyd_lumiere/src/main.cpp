@@ -272,6 +272,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   else if (String(topic) == mqttTopicTemp) {
     temperature = msg.toFloat();
     Serial.printf(">>> MQTT: Temp = %.1f\n", temperature);
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawTempCard();
   }
   else if (String(topic) == mqttTopicBasin1) {
     basin1 = msg.toInt();
@@ -1595,7 +1596,7 @@ body{font-family:Arial;background:#0a0a1a;color:#fff;user-select:none}
 </style></head><body>
 <div class="hd"><h1>CABANE MARCOUX</h1><div class="dt w" id="dt"></div></div>
 <div class="w">
-<div class="r"><div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div></div><div class="cd tp"><div class="lb">Temperature</div><div class="vl" id="tmp">--.-°C</div></div></div>
+<div class="r"><div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="font-size:14px;color:#4f4;margin-top:4px" id="dlv">--:--</div></div><div class="cd tp"><div class="lb">Temperature</div><div class="vl" id="tmp">--.-°C</div></div></div>
 <div class="gc"><div class="gl"><span>Tendance</span><span class="ar" id="ar"></span></div><canvas id="gr" height="90"></canvas></div>
 <div class="bc"><div class="br"><span class="nl">Bassin 1</span><div class="bw"><div class="bf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div><div class="br"><span class="nl">Bassin 2</span><div class="bw"><div class="bf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div><div class="br"><span class="nl">Bassin 3</span><div class="bw"><div class="bf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div></div>
 <button class="vb off" id="vb" onclick="tg()" disabled><span class="vd" id="vd"></span><span id="vt">VACUUM ON</span></button>
@@ -1611,7 +1612,7 @@ function dg(){var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=wi
 function od(v){document.getElementById("dmp").textContent=v;var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();dg()}}}
 function ss(t,cl){document.getElementById("st").textContent=t;document.getElementById("dt").className="dt "+cl}
 function tg(){if(c&&c.connected)c.publish("cyd/"+id+"/cmd","toggle")}
-function go(){ss("Connexion...","w");var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;function tc(){if(ui>=urls.length)ui=0;c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});c.on("connect",function(){ss("Connecte","ok");document.getElementById("vb").disabled=false;var p="cyd/"+id+"/";["state","dompeur","temp","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)})});c.on("message",function(tp,m){var v=m.toString(),p="cyd/"+id+"/";if(tp===p+"state")sv(v==="1");if(tp===p+"dompeur")od(v);if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";if(tp===p+"basin1")sba(1,v);if(tp===p+"basin2")sba(2,v);if(tp===p+"basin3")sba(3,v)});c.on("error",function(){ss("Essai...","w");c.end(true);ui++;setTimeout(tc,1000)});c.on("close",function(){ss("Deconnecte","er");document.getElementById("vb").disabled=true})}tc()}
+function go(){ss("Connexion...","w");var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;function tc(){if(ui>=urls.length)ui=0;c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});c.on("connect",function(){ss("Connecte","ok");document.getElementById("vb").disabled=false;var p="cyd/"+id+"/";["state","dompeur","dompeur/live","temp","humidity","basin1","basin2","basin3"].forEach(function(t){c.subscribe(p+t)})});c.on("message",function(tp,m){var v=m.toString(),p="cyd/"+id+"/";if(tp===p+"state")sv(v==="1");if(tp===p+"dompeur")od(v);if(tp===p+"dompeur/live"){var dl=document.getElementById("dlv");dl.textContent=v;dl.style.color=(v==="--:--")?"#666":"#4f4"}if(tp===p+"temp")document.getElementById("tmp").innerHTML=v+"&deg;C";if(tp===p+"basin1")sba(1,v);if(tp===p+"basin2")sba(2,v);if(tp===p+"basin3")sba(3,v)});c.on("error",function(){ss("Essai...","w");c.end(true);ui++;setTimeout(tc,1000)});c.on("close",function(){ss("Deconnecte","er");document.getElementById("vb").disabled=true})}tc()}
 go();dg();document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
 </script></body></html>
 )rawliteral";
