@@ -376,6 +376,10 @@ void setup() {
   mqttTopicCal         = "cyd/" + deviceId + "/cmd/cal";
   Serial.printf("Device ID: %s\n", deviceId.c_str());
 
+  // BLE init BEFORE WiFi (required — BLE controller must init first)
+  bleInit();
+  updateBleAdvertising();
+
   // WiFi
   WiFi.mode(WIFI_STA);
   prefs.begin("wifi", true);
@@ -396,10 +400,6 @@ void setup() {
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
   mqtt.setBufferSize(512);
-
-  // BLE
-  bleInit();
-  updateBleAdvertising();
 
   Serial.println("=== WROOM Hub ready ===");
   Serial.println("Commands: SSID:xxx  PASS:xxx  ID:xxx  RESTART  STATUS");
