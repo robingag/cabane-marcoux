@@ -1,4 +1,4 @@
-# Prompt de continuité — Projet Cabane Marcoux ESP32 (R5.2)
+# Prompt de continuité — Projet Cabane Marcoux ESP32 (R5.4d)
 
 Colle ce prompt au début d'une nouvelle session Claude Code pour reprendre exactement où on est rendu.
 
@@ -7,11 +7,11 @@ Colle ce prompt au début d'une nouvelle session Claude Code pour reprendre exac
 ## PROMPT À COLLER :
 
 ```
-Je travaille sur le projet Cabane Marcoux — un système de monitoring d'une cabane à sucre avec des ESP32. Le repo GitHub est robingag/cabane-marcoux, branche main. Commit actuel: R5.2 (118fc76).
+Je travaille sur le projet Cabane Marcoux — un système de monitoring d'une cabane à sucre avec des ESP32. Le repo GitHub est robingag/cabane-marcoux, branche main. Commit actuel: R5.4d (5a154e7).
 
-Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\Bureau\CLAUDE_CODE\
+Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\Bureau\CLAUDE_CODE\cyd_lumiere
 
-### Architecture actuelle (R5.2) — 3 ESP32 :
+### Architecture actuelle (R5.4d) — 3 ESP32 :
 
 1. **WROOM Hub** (`wroom_hub/`) — LE CERVEAU
    - ESP32-WROOM-32 DevKit
@@ -31,8 +31,8 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
    - ESP32-2432S028R avec écran TFT 320x240 + touch XPT2046
    - NE LIT PLUS de capteurs directement (ISR/ultrasonic supprimés)
    - Reçoit données via MQTT subscribe + BLE scan "CBM-HUB"
-   - Affiche : dompeur, 3 bassins, temp/hum
-   - Features gardées : calibration 2 points, code QR, PIN vacuum, scan WiFi, dashboard web, graphique tendance
+   - Affiche : dompeur, 4 bassins, temp/hum
+   - Features : calibration 1 point offset (pouces), code QR, PIN vacuum, scan WiFi, dashboard web
    - DeviceId : **5ea48c**
    - WiFi : Cabane_Marcoux (sauvé NVS)
    - COM port : COM6 (même que Hub, un seul branché à la fois)
@@ -42,22 +42,50 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
    - 2x JSN-SR04T : bassin 2 (GPIO 25/26) + bassin 3 (GPIO 27/33)
    - BLE advertise : "CBM" magic 0xCB
 
+### Dashboard Web (`index.html` à la racine) — BONNE VERSION
+- Dark theme ambre/bleu, PWA mobile
+- 4 bassins verticaux (Eau Érable, Concentré, Permeat, B4)
+- Temp en gros + humidité en petit (2e ligne, aligné droite)
+- Dompeur : compteur vert elapsed (ne redémarre plus sur retained MQTT)
+- Tendance dompeur : s'efface après 30 min inactivité → "En attente de la prochaine coulée!"
+- Calibration 1 point offset : bouton Lecture + saisie manuelle en pouces
+- Champ Max (pouces) par bassin : % calculé = pouces_actuels / max × 100
+- Alarme persistante localStorage
+- MQTT retained : protégé contre faux redémarrages (dompeur, dmpTs, hist ignorés si retained)
+
 ### MQTT Topics (tous publiés par le Hub, ID=5ea48c) :
 - cyd/5ea48c/dompeur — dernier cycle MM:SS (retained)
 - cyd/5ea48c/dompeur/live — compteur temps réel chaque seconde (retained)
-- cyd/5ea48c/basin1, basin2, basin3 — niveaux %
-- cyd/5ea48c/basin1/raw, basin2/raw, basin3/raw — distances brutes cm
+- cyd/5ea48c/basin1, basin2, basin3, basin4 — niveaux %
+- cyd/5ea48c/basin1/raw, basin2/raw, basin3/raw, basin4/raw — distances brutes cm
+- cyd/5ea48c/basin1/cal ... basin4/cal — calibration JSON {refRaw, refInches}
 - cyd/5ea48c/temp, humidity — température et humidité
 - cyd/5ea48c/state — état vacuum (0/1)
 - cyd/5ea48c/cmd — commandes vacuum
-- cyd/5ea48c/cmd/cal — calibration JSON
+- cyd/5ea48c/settings/unit — "pct" ou "in"
+- cyd/5ea48c/settings/bnames — noms bassins JSON
+- cyd/5ea48c/settings/bmax — profondeur max pouces JSON
 
-### Problèmes à résoudre (prochaine session) :
-1. **CYD écran ne se met pas à jour** — Les données MQTT arrivent (confirmé via serial) mais l'écran n'affiche pas les nouvelles valeurs. drawMainScreen() n'appelle pas drawTempCard() ni drawTrendGraph(). Les callbacks MQTT mettent à jour les variables mais possiblement currentScreen != SCREEN_MAIN au moment des premiers messages.
-2. **Dashboard web : compteur vert reset au refresh** — Le dompeur/live retained fonctionne mais le compteur vert (id="dlv") revient à "--:--" au refresh quand le dompeur est inactif.
-3. **Limit switch vibre** — Les vibrations mécaniques génèrent des faux fronts. Le debounce stable (500ms + 20s min) filtre la plupart mais à tester en conditions réelles.
-4. **2 PCB JSN-SR04T morts** — Bassin 1 n'a pas de capteur fonctionnel.
-5. **Fil ECHO GPIO 35 du CYD cassé** — Raison de la migration vers WROOM Hub.
+### Changements R5.3→R5.4d (cette session) :
+- R5.3c : Fix timer dompeur qui redémarrait sur retained MQTT
+- R5.3d : Humidité en petit, 2e ligne alignée droite
+- R5.3e : Nettoyage retained dmpTs du broker à la connexion
+- R5.4 : 4e bassin + calibration 1 point offset (remplace low/high)
+- R5.4b : Courbe tendance s'efface après 30 min, texte orange
+- R5.4c : Texte "En attente de la prochaine coulée!"
+- R5.4d : Champ Max pouces, % calculé depuis pouces
+
+### Problèmes restants :
+1. **CYD écran ne se met pas à jour** — Les données MQTT arrivent (confirmé via serial) mais l'écran TFT ne rafraîchit pas. drawMainScreen() ne rappelle pas les fonctions d'affichage.
+2. **Limit switch vibre** — Debounce stable (500ms + 20s min) filtre la plupart mais à tester en conditions réelles.
+3. **2 PCB JSN-SR04T morts** — Bassin 1 n'a pas de capteur fonctionnel.
+4. **Bassin 4 pas encore câblé** — UI prêt, topic MQTT prêt, pas de hardware.
+5. **Hub ne publie pas basin4** — Ajouter quand hardware prêt.
+
+### Prochaines tâches possibles :
+- Fixer l'affichage CYD (écran TFT ne se rafraîchit pas)
+- Ajouter basin4 au firmware Hub quand câblé
+- Tester calibration pouces en conditions réelles
 
 ### Outils :
 - PlatformIO : C:\Users\ryb086\AppData\Local\Programs\Python\Python312\Scripts\pio.exe
@@ -71,8 +99,8 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
 ---
 
 ## Notes :
-- R5.2 sur GitHub (118fc76)
-- Hub flashé et fonctionnel (WiFi OK, MQTT OK, BLE OK, temp 2.7°C correcte)
-- CYD flashé display-only mais écran ne se met pas à jour visuellement
-- Le CYD reçoit bien les données MQTT (confirmé par serial monitor)
-- Priorité prochaine session : fixer l'affichage du CYD
+- R5.4d sur GitHub (5a154e7)
+- Hub flashé et fonctionnel (WiFi OK, MQTT OK, BLE OK)
+- Dashboard web complètement à jour avec toutes les features
+- CYD flashé display-only mais écran TFT ne se met pas à jour visuellement
+- L'ancienne version du dashboard est dans cyd_lumiere/Cabane_Marcoux.html (obsolète)
