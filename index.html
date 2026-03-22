@@ -388,8 +388,8 @@ function dg(){
   var W=cv.offsetWidth,H=90;
   ctx.clearRect(0,0,W,H);ctx.fillStyle="#060810";ctx.fillRect(0,0,W,H);
   if(hist.length<2){
-    ctx.fillStyle="#475569";ctx.font="11px system-ui";ctx.textAlign="center";
-    ctx.fillText("En attente de donn\u00e9es...",W/2,H/2+4);
+    ctx.fillStyle="#f59e0b";ctx.font="bold 18px system-ui";ctx.textAlign="center";
+    ctx.fillText("Ca ne coule plus",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
   }
   var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
@@ -458,7 +458,7 @@ function tgMeoFromMenu(){meoOn=document.getElementById("meo-chk").checked;syncMe
 function setMeo(v){meoOn=v;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
 function syncMeoUI(){document.getElementById("meo-chk").checked=meoOn}
 var dmpElapsed=0,dmpTimer=null,idleTimer=null,lastDmpTs=0;
-(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}}catch(e){}})();
+(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}else if(hist.length>0){hist=[];localStorage.removeItem("hist_"+id)}}catch(e){}})();
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=Date.now();try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
 function od(v){document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
@@ -491,6 +491,7 @@ function go(){
       ["settings/unit","settings/depth","settings/meo","settings/bnames","settings/hist","settings/sync","settings/dmpTs","alarm"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
       c.publish(p+"settings/dmpTs","",{retain:true});
+      c.publish(p+"settings/hist","",{retain:true});
     });
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
@@ -504,7 +505,7 @@ function go(){
       if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}syncDepthUI();for(var i=1;i<=4;i++)sba(i,basinPct[i])}
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
-      if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
+      if(tp===p+"settings/hist"&&!(packet&&packet.retain)){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
       if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
