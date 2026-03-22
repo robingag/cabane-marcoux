@@ -57,9 +57,11 @@ float temperature = 0.0;
 float humidity = 0.0;
 int bleBattery = -1;
 int basin1 = 0, basin2 = 0, basin3 = 0;
-int rawBasin[3] = {0, 0, 0};
-int calLow[3]  = {-1, -1, -1};
-int calHigh[3] = {-1, -1, -1};
+int rawBasin[4] = {0, 0, 0, 0};
+// Calibration 1-point offset (from dashboard)
+float calRefRaw[4]    = {-1, -1, -1, -1};  // raw cm at calibration time
+float calRefInches[4] = {-1, -1, -1, -1};   // actual inches at calibration time
+float basinMax[4]     = {0, 0, 0, 0};        // max depth inches (for % calc)
 
 #define GRAPH_MAX 30
 int dompeurHist[GRAPH_MAX];
@@ -89,15 +91,22 @@ long readUltrasonic4Wire(int trigPin, int echoPin) {
   return duration / 58;
 }
 
+float rawToInches(int idx, float currentRaw) {
+  if (calRefRaw[idx] < 0 || calRefInches[idx] < 0) return -1;
+  float deltaRaw = calRefRaw[idx] - currentRaw;
+  float deltaInches = deltaRaw / 2.54;
+  return calRefInches[idx] + deltaInches;
+}
+
 int distanceToPercent(long distCm, int idx) {
   if (distCm < 0) return -1;
-  if (calLow[idx] < 0 || calHigh[idx] < 0) {
-    rawBasin[idx] = (int)distCm;
-    return 0;
-  }
   rawBasin[idx] = (int)distCm;
-  int pct = map(distCm, calLow[idx], calHigh[idx], 0, 100);
-  return constrain(pct, 0, 100);
+  float inches = rawToInches(idx, (float)distCm);
+  if (inches >= 0 && basinMax[idx] > 0) {
+    int pct = (int)(inches / basinMax[idx] * 100.0);
+    return constrain(pct, 0, 100);
+  }
+  return 0;
 }
 
 // ========== BLE ==========
@@ -119,10 +128,12 @@ class HubScanCallback : public NimBLEAdvertisedDeviceCallbacks {
         uint16_t d3 = (uint8_t)mfr[5] | ((uint8_t)mfr[6] << 8);
         rawBasin[1] = d2;
         rawBasin[2] = d3;
-        if (calLow[1] >= 0 && calHigh[1] >= 0)
-          basin2 = constrain(map(d2, calLow[1], calHigh[1], 0, 100), 0, 100);
-        if (calLow[2] >= 0 && calHigh[2] >= 0)
-          basin3 = constrain(map(d3, calLow[2], calHigh[2], 0, 100), 0, 100);
+        float in2 = rawToInches(1, (float)d2);
+        float in3 = rawToInches(2, (float)d3);
+        if (in2 >= 0 && basinMax[1] > 0)
+          basin2 = constrain((int)(in2 / basinMax[1] * 100.0), 0, 100);
+        if (in3 >= 0 && basinMax[2] > 0)
+          basin3 = constrain((int)(in3 / basinMax[2] * 100.0), 0, 100);
         Serial.printf(">>> BLE CBM: B2=%dcm(%d%%) B3=%dcm(%d%%)\n", d2, basin2, d3, basin3);
         if (mqtt.connected()) {
           mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
@@ -239,31 +250,42 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.printf("Vacuum: %s\n", vacuumOn ? "ON" : "OFF");
   }
 
-  // Calibration command from CYD
-  if (t == mqttTopicCal) {
-    int bIdx = -1;
-    bool isLow = false, isHigh = false;
-    int bPos = msg.indexOf("\"basin\":");
-    if (bPos >= 0) bIdx = msg.substring(bPos + 8).toInt();
-    if (msg.indexOf("\"low\"") >= 0) isLow = true;
-    if (msg.indexOf("\"high\"") >= 0) isHigh = true;
-    if (bIdx >= 1 && bIdx <= 3) {
-      int idx = bIdx - 1;
-      if (isLow) {
-        calLow[idx] = rawBasin[idx];
+  // Basin calibration data from dashboard (basin1/cal .. basin4/cal)
+  for (int bn = 1; bn <= 4; bn++) {
+    String calTopic = "cyd/" + deviceId + "/basin" + String(bn) + "/cal";
+    if (t == calTopic) {
+      int idx = bn - 1;
+      // Parse {"refRaw":XX,"refInches":YY}
+      int rr = msg.indexOf("\"refRaw\":");
+      int ri = msg.indexOf("\"refInches\":");
+      if (rr >= 0 && ri >= 0) {
+        calRefRaw[idx] = msg.substring(rr + 9).toFloat();
+        calRefInches[idx] = msg.substring(ri + 12).toFloat();
         prefs.begin("cal", false);
-        prefs.putInt(("low" + String(idx)).c_str(), calLow[idx]);
+        prefs.putFloat(("rr" + String(idx)).c_str(), calRefRaw[idx]);
+        prefs.putFloat(("ri" + String(idx)).c_str(), calRefInches[idx]);
         prefs.end();
-      } else if (isHigh) {
-        calHigh[idx] = rawBasin[idx];
-        prefs.begin("cal", false);
-        prefs.putInt(("high" + String(idx)).c_str(), calHigh[idx]);
-        prefs.end();
+        Serial.printf("Cal B%d: refRaw=%.1f refInches=%.1f\n", bn, calRefRaw[idx], calRefInches[idx]);
       }
-      String calJson = "{\"basin\":" + String(bIdx) + ",\"low\":" + String(calLow[idx]) + ",\"high\":" + String(calHigh[idx]) + "}";
-      String calTopic = "cyd/" + deviceId + "/basin" + String(bIdx) + "/cal";
-      mqtt.publish(calTopic.c_str(), calJson.c_str(), true);
     }
+  }
+
+  // Basin max depth from dashboard (settings/bmax)
+  String bmaxTopic = "cyd/" + deviceId + "/settings/bmax";
+  if (t == bmaxTopic) {
+    // Parse {"1":XX,"2":YY,"3":ZZ,"4":WW}
+    for (int bn = 1; bn <= 4; bn++) {
+      String key = "\"" + String(bn) + "\":";
+      int pos = msg.indexOf(key);
+      if (pos >= 0) {
+        basinMax[bn - 1] = msg.substring(pos + key.length()).toFloat();
+      }
+    }
+    prefs.begin("cal", false);
+    for (int i = 0; i < 4; i++)
+      prefs.putFloat(("mx" + String(i)).c_str(), basinMax[i]);
+    prefs.end();
+    Serial.printf("BasinMax: %.0f %.0f %.0f %.0f\n", basinMax[0], basinMax[1], basinMax[2], basinMax[3]);
   }
 }
 
@@ -277,7 +299,12 @@ void mqttReconnect() {
   if (mqtt.connect(clientId.c_str())) {
     Serial.println("MQTT: connected!");
     mqtt.subscribe(mqttTopicCmd.c_str());
-    mqtt.subscribe(mqttTopicCal.c_str());
+    for (int bn = 1; bn <= 4; bn++) {
+      String ct = "cyd/" + deviceId + "/basin" + String(bn) + "/cal";
+      mqtt.subscribe(ct.c_str());
+    }
+    String bmaxSub = "cyd/" + deviceId + "/settings/bmax";
+    mqtt.subscribe(bmaxSub.c_str());
     mqtt.publish(mqttTopicState.c_str(), vacuumOn ? "1" : "0", true);
   } else {
     Serial.printf("MQTT: failed (rc=%d)\n", mqtt.state());
@@ -351,11 +378,12 @@ void setup() {
   pinMode(VACUUM_PIN, OUTPUT);
   digitalWrite(VACUUM_PIN, LOW);
 
-  // Load calibration
+  // Load calibration (1-point offset + max)
   prefs.begin("cal", true);
-  for (int i = 0; i < 3; i++) {
-    calLow[i]  = prefs.getInt(("low" + String(i)).c_str(), -1);
-    calHigh[i] = prefs.getInt(("high" + String(i)).c_str(), -1);
+  for (int i = 0; i < 4; i++) {
+    calRefRaw[i]    = prefs.getFloat(("rr" + String(i)).c_str(), -1);
+    calRefInches[i] = prefs.getFloat(("ri" + String(i)).c_str(), -1);
+    basinMax[i]     = prefs.getFloat(("mx" + String(i)).c_str(), 0);
   }
   prefs.end();
 
