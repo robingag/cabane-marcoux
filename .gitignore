@@ -31,3 +31,5 @@ C?Usersryb086*
 
 # PlatformIO build
 cyd_lumiere/.pio/
+wroom_hub/.pio/
+capteur_bassins/.pio/
