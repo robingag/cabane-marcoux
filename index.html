@@ -490,10 +490,10 @@ function go(){
       ["settings/unit","settings/depth","settings/meo","settings/bnames","settings/hist","settings/sync","settings/dmpTs","alarm"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
     });
-    c.on("message",function(tp,m){
+    c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
       if(tp===p+"state")sv(v==="1");
-      if(tp===p+"dompeur")od(v);
+      if(tp===p+"dompeur"){if(packet&&packet.retain){document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}}else{od(v)}}
       if(tp===p+"temp"){curTemp=v;updTH()}
       if(tp===p+"humidity"){curHum=parseFloat(v)||0;updTH()}
       if(tp===p+"basin1")sba(1,v);
@@ -510,7 +510,7 @@ function go(){
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=3;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
       if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
-      if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);if(obj.ts>0){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800&&!dmpTimer){dmpElapsed=ago;if(obj.val)document.getElementById("dmp").textContent=obj.val;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}catch(e){}}
+      if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/depth",JSON.stringify(basinDepth),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
     });
