@@ -89,6 +89,7 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
    - nouveau ESP32 → basin4, basin4/raw
    - Hub garde → basin1, basin1/raw (capteur local GPIO 13/14)
 5. **Retirer le scan BLE du Hub** — Plus nécessaire pour les bassins une fois WiFi en place (garder pour Inkbird temp/hum seulement)
+6. **Toute calibration via MQTT** — Les calibrations (refRaw/refInches, basinMax) doivent pouvoir être envoyées depuis le dashboard web via MQTT et reçues par chaque ESP32 capteur. Chaque ESP32 s'abonne à ses topics basin{n}/cal et settings/bmax, sauvegarde en NVS, et applique la conversion pouces/% localement.
 
 ### Prochaines tâches possibles :
 - Fixer l'affichage CYD (écran TFT ne se rafraîchit pas)
