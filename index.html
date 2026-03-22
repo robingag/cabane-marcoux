@@ -167,7 +167,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   <div class="sec"><span>Mesures temps r&#233;el</span></div>
   <div class="r">
     <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div></div>
-    <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div></div>
+    <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div><div style="color:#38bdf8;font-size:.75rem;opacity:.7;text-align:right;margin-top:2px" id="hum"></div></div>
   </div>
   <div class="sec"><span>Tendance dompeur</span></div>
   <div class="gc" style="position:relative">
@@ -369,7 +369,7 @@ function calibrate(basin,point){
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function sv(on){vacOn=on;updSlider()}
-function updTH(){var s=curTemp+"&deg;C";if(curHum>0)s+=" &nbsp;"+curHum.toFixed(0)+"%";document.getElementById("tmp").innerHTML=s}
+function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var f=document.getElementById("bf"+n);f.style.height=l+"%";f.className="tf "+(l>=91?"h":l>=61?"m":"l");if(basinUnit==="in"&&basinDepth[n]>0){var po=Math.round(basinDepth[n]*l/100);document.getElementById("bp"+n).textContent=po+" po"}else{document.getElementById("bp"+n).textContent=l+"%"}}
 function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"");for(var n=1;n<=3;n++){document.getElementById("depthTxt"+n).textContent=basinDepth[n]>0?basinDepth[n]+" po":"-- po";document.getElementById("depthVal"+n).parentElement.style.display=basinUnit==="in"?"flex":"none"}}
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
