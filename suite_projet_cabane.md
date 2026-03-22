@@ -79,8 +79,16 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
 1. **CYD écran ne se met pas à jour** — Les données MQTT arrivent (confirmé via serial) mais l'écran TFT ne rafraîchit pas. drawMainScreen() ne rappelle pas les fonctions d'affichage.
 2. **Limit switch vibre** — Debounce stable (500ms + 20s min) filtre la plupart mais à tester en conditions réelles.
 3. **2 PCB JSN-SR04T morts** — Bassin 1 n'a pas de capteur fonctionnel.
-4. **Bassin 4 pas encore câblé** — UI prêt, topic MQTT prêt, pas de hardware.
-5. **Hub ne publie pas basin4** — Ajouter quand hardware prêt.
+
+### À FAIRE à la prochaine connexion locale (Hub sur COM6) :
+1. **Flasher le Hub R5.5** — `cd wroom_hub && pio run --target upload` — nouvelle calibration 1-point offset
+2. **Migrer capteur_bassins de BLE vers WiFi/MQTT** — Le capteur_bassins publie directement sur MQTT au lieu de passer par BLE+Hub. Même volume de données (le Hub publiait déjà). Avantages : temps réel (pas de délai scan 20s), plus fiable.
+3. **Ajouter un 3e ESP32 pour bassin 4** — Nouveau ESP32-WROOM avec 1x JSN-SR04T, WiFi/MQTT direct, publie sur cyd/5ea48c/basin4 et basin4/raw. Même firmware que capteur_bassins migré en WiFi.
+4. **Chaque ESP32 capteur publie ses propres topics** :
+   - capteur_bassins (existant) → basin2, basin3, basin2/raw, basin3/raw
+   - nouveau ESP32 → basin4, basin4/raw
+   - Hub garde → basin1, basin1/raw (capteur local GPIO 13/14)
+5. **Retirer le scan BLE du Hub** — Plus nécessaire pour les bassins une fois WiFi en place (garder pour Inkbird temp/hum seulement)
 
 ### Prochaines tâches possibles :
 - Fixer l'affichage CYD (écran TFT ne se rafraîchit pas)
