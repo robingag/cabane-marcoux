@@ -389,7 +389,7 @@ function dg(){
   ctx.clearRect(0,0,W,H);ctx.fillStyle="#060810";ctx.fillRect(0,0,W,H);
   if(hist.length<2){
     ctx.fillStyle="#f59e0b";ctx.font="bold 18px system-ui";ctx.textAlign="center";
-    ctx.fillText("Ca ne coule plus",W/2,H/2+4);
+    ctx.fillText("En attente de la prochaine coul\u00e9e!",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
   }
   var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
