@@ -9,8 +9,10 @@ String SHARED_DEVICE_ID = "";
 
 // ========== GPIO ==========
 #define DOMPEUR_PIN   5
-#define US1_TRIG     13
-#define US1_ECHO     14
+#define US1_TRIG     25
+#define US1_ECHO     26
+#define US2_TRIG     27
+#define US2_ECHO     33
 #define VACUUM_PIN    4
 
 // ========== MQTT ==========
@@ -102,6 +104,7 @@ int distanceToPercent(long distCm, int idx) {
 
 // ========== BLE ==========
 bool bleInitDone = false;
+bool bleScanning = false;
 unsigned long lastBleScan = 0;
 const unsigned long BLE_SCAN_INTERVAL = 20000;
 bool vacuumOn = false;
@@ -114,6 +117,10 @@ class HubScanCallback : public NimBLEAdvertisedDeviceCallbacks {
     // CBM (capteur_bassins): bassin 2+3
     if (name == "CBM" && device->haveManufacturerData()) {
       std::string mfr = device->getManufacturerData();
+      Serial.printf(">>> CBM raw (%d bytes): ", (int)mfr.size());
+      for (int i = 0; i < (int)mfr.size() && i < 12; i++)
+        Serial.printf("%02X ", (uint8_t)mfr[i]);
+      Serial.println();
       if (mfr.size() >= 7 && (uint8_t)mfr[2] == 0xCB) {
         uint16_t d2 = (uint8_t)mfr[3] | ((uint8_t)mfr[4] << 8);
         uint16_t d3 = (uint8_t)mfr[5] | ((uint8_t)mfr[6] << 8);
@@ -215,11 +222,13 @@ void bleInit() {
 
 void bleScan() {
   if (!bleInitDone) return;
+  bleScanning = true;
   Serial.println("BLE: scanning 10s...");
   NimBLEScan* pScan = NimBLEDevice::getScan();
   pScan->start(10, false);
   Serial.printf("BLE: scan done, found %d devices\n", pScan->getResults().getCount());
   pScan->clearResults();
+  bleScanning = false;
 }
 
 // ========== MQTT CALLBACK ==========
@@ -348,6 +357,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(DOMPEUR_PIN), limitSwitchISR, CHANGE);
   pinMode(US1_TRIG, OUTPUT);
   pinMode(US1_ECHO, INPUT);
+  pinMode(US2_TRIG, OUTPUT);
+  pinMode(US2_ECHO, INPUT);
   pinMode(VACUUM_PIN, OUTPUT);
   digitalWrite(VACUUM_PIN, LOW);
 
@@ -385,17 +396,15 @@ void setup() {
   mqttTopicCal         = "cyd/" + deviceId + "/cmd/cal";
   Serial.printf("Device ID: %s\n", deviceId.c_str());
 
-  // BLE init BEFORE WiFi (required — BLE controller must init first)
+  // BLE init BEFORE WiFi
   bleInit();
-  updateBleAdvertising();
 
   // WiFi
   WiFi.mode(WIFI_STA);
   prefs.begin("wifi", true);
-  String ssid = prefs.getString("ssid", "Cabane_Marcoux");
-  String pass = prefs.getString("pass", "Cabane2025");
+  String ssid = prefs.getString("ssid", "HELIX-0277_EXT");
+  String pass = prefs.getString("pass", "robingag");
   prefs.end();
-
   Serial.printf("WiFi: connecting to '%s'...\n", ssid.c_str());
   WiFi.begin(ssid.c_str(), pass.c_str());
   int tries = 0;
@@ -426,8 +435,8 @@ void loop() {
     if (millis() - lastWifiRetry >= 30000) {
       lastWifiRetry = millis();
       prefs.begin("wifi", true);
-      String ssid = prefs.getString("ssid", "Cabane_Marcoux");
-      String pass = prefs.getString("pass", "Cabane2025");
+      String ssid = prefs.getString("ssid", "HELIX-0277_EXT");
+      String pass = prefs.getString("pass", "robingag");
       prefs.end();
       WiFi.begin(ssid.c_str(), pass.c_str());
     }
@@ -442,16 +451,14 @@ void loop() {
   if (millis() - lastBleScan >= BLE_SCAN_INTERVAL) {
     lastBleScan = millis();
     bleScan();
-    if (mqtt.connected()) {
-      mqtt.publish(mqttTopicTemp.c_str(), String(temperature, 1).c_str(), true);
-      mqtt.publish(mqttTopicHumidity.c_str(), String(humidity, 1).c_str(), true);
-    }
   }
 
   // Bassin 1 ultrasonic every 500ms
   if (millis() - lastUltrasonicRead >= US_INTERVAL) {
     lastUltrasonicRead = millis();
     long d1 = readUltrasonic4Wire(US1_TRIG, US1_ECHO);
+    long d2 = readUltrasonic4Wire(US2_TRIG, US2_ECHO);
+    Serial.printf("US1: %dcm  US2: %dcm\n", (int)d1, (int)d2);
     int p1 = distanceToPercent(d1, 0);
     if (p1 >= 0 && p1 != basin1) {
       basin1 = p1;
@@ -460,6 +467,16 @@ void loop() {
         mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
         String rawTopic = "cyd/" + deviceId + "/basin1/raw";
         mqtt.publish(rawTopic.c_str(), String(rawBasin[0]).c_str(), true);
+      }
+    }
+    int p2 = distanceToPercent(d2, 1);
+    if (p2 >= 0 && p2 != basin2) {
+      basin2 = p2;
+      Serial.printf("Bassin 2: %dcm = %d%%\n", (int)d2, basin2);
+      if (mqtt.connected()) {
+        mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
+        String rawTopic = "cyd/" + deviceId + "/basin2/raw";
+        mqtt.publish(rawTopic.c_str(), String(rawBasin[1]).c_str(), true);
       }
     }
   }

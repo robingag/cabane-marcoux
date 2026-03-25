@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>WROOM Hub - Live Serial</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'Courier New',monospace;padding:20px}
+h1{color:#ff9800;text-align:center;margin-bottom:5px;font-size:1.4em}
+.sub{text-align:center;color:#666;margin-bottom:20px;font-size:0.8em}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
+.card{background:#141a2e;border:1px solid #1e2a45;border-radius:10px;padding:20px;text-align:center}
+.card .label{color:#888;font-size:0.75em;text-transform:uppercase;letter-spacing:2px}
+.card .value{font-size:2.2em;font-weight:bold;margin-top:8px}
+.us1 .value{color:#00e5ff}
+.us2 .value{color:#76ff03}
+.us3 .value{color:#ff9800}
+.temp .value{color:#ff9800}
+.hum .value{color:#40c4ff}
+.bar-container{background:#1a1a2e;height:120px;width:60px;margin:10px auto;border-radius:5px;position:relative;overflow:hidden;border:1px solid #333}
+.bar-fill{position:absolute;bottom:0;width:100%;transition:height 0.5s;border-radius:0 0 5px 5px}
+#bar1{background:linear-gradient(to top,#00e5ff,#0288d1)}
+#bar2{background:linear-gradient(to top,#76ff03,#33691e)}
+#bar3{background:linear-gradient(to top,#ff9800,#e65100)}
+.console{background:#0d1117;border:1px solid #1e2a45;border-radius:8px;padding:15px;max-height:250px;overflow-y:auto;font-size:0.75em;line-height:1.6}
+.console .line{color:#8b949e}
+.console .line.com5{color:#00e5ff}
+.console .line.com6{color:#ff9800}
+.console .line.err{color:#f44336}
+.status{text-align:center;margin-top:10px;color:#4caf50;font-size:0.8em}
+.port-tag{font-size:0.6em;color:#555;margin-top:4px}
+</style></head><body>
+<h1>CABANE MARCOUX — SERIAL LIVE</h1>
+<div class="sub">COM5 (WROOM) + COM6 (Bassin 3) — TEST MODE</div>
+<div class="grid">
+  <div class="card us1"><div class="label">Bassin 1 (US1)</div>
+    <div class="bar-container"><div class="bar-fill" id="bar1"></div></div>
+    <div class="value" id="us1">--</div>
+    <div class="port-tag">COM5 GPIO 25/26</div></div>
+  <div class="card us2"><div class="label">Bassin 2 (US2)</div>
+    <div class="bar-container"><div class="bar-fill" id="bar2"></div></div>
+    <div class="value" id="us2">--</div>
+    <div class="port-tag">COM5 GPIO 27/33</div></div>
+  <div class="card us3"><div class="label">Bassin 3 (US3)</div>
+    <div class="bar-container"><div class="bar-fill" id="bar3"></div></div>
+    <div class="value" id="us3">--</div>
+    <div class="port-tag">COM6 GPIO 18/19</div></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+  <div class="card temp"><div class="label">Temperature</div><div class="value" id="temp">--</div></div>
+  <div class="card hum"><div class="label">Humidite</div><div class="value" id="hum">--</div></div>
+</div>
+<h3 style="color:#888;margin:15px 0 8px;font-size:0.85em">CONSOLE SERIE</h3>
+<div class="console" id="console"></div>
+<div class="status" id="status">Connexion...</div>
+<script>
+function update(){
+  fetch('/serial_data.json?t='+Date.now()).then(r=>r.json()).then(d=>{
+    document.getElementById('us1').textContent=d.us1>=0?d.us1+'cm':'--';
+    document.getElementById('us2').textContent=d.us2!=0?d.us2+'cm':'--';
+    document.getElementById('us3').textContent=d.b3>0?d.b3+'cm (BLE)':(d.us3>=0?d.us3+'cm':'--');
+    document.getElementById('temp').textContent=d.temp>0?d.temp.toFixed(1)+'C':'--';
+    document.getElementById('hum').textContent=d.hum>0?d.hum.toFixed(1)+'%':'--';
+    let maxCm=150;
+    document.getElementById('bar1').style.height=Math.min(100,Math.max(0,(d.us1>=0?d.us1:0)/maxCm*100))+'%';
+    document.getElementById('bar2').style.height=Math.min(100,Math.max(0,Math.abs(d.us2)/maxCm*100))+'%';
+    let b3val=d.b3>0?d.b3:(d.us3>=0?d.us3:0);
+    document.getElementById('bar3').style.height=Math.min(100,Math.max(0,b3val/maxCm*100))+'%';
+    let c=document.getElementById('console');
+    c.innerHTML=d.lines.map(l=>{
+      let cls='line';
+      if(l.includes('COM5'))cls+=' com5';
+      else if(l.includes('COM6'))cls+=' com6';
+      if(l.includes('ERROR')||l.includes('[E]'))cls+=' err';
+      return '<div class="'+cls+'">'+l+'</div>';
+    }).join('');
+    c.scrollTop=c.scrollHeight;
+    document.getElementById('status').textContent='Live - '+new Date().toLocaleTimeString();
+  }).catch(()=>{document.getElementById('status').textContent='En attente du serial_reader...';});
+}
+setInterval(update,2000);update();
+</script></body></html>
