@@ -77,11 +77,15 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
 
 ### Problèmes restants :
 1. **CYD écran ne se met pas à jour** — Les données MQTT arrivent (confirmé via serial) mais l'écran TFT ne rafraîchit pas. drawMainScreen() ne rappelle pas les fonctions d'affichage.
-2. **Limit switch vibre** — Debounce stable (500ms + 20s min) filtre la plupart mais à tester en conditions réelles.
+2. **Limit switch vibre** — Solution documentée : remplacer debounce fixe 500ms par filtration stable-state 80ms (voir item 7 dans À FAIRE). À implémenter et tester en conditions réelles.
 3. **2 PCB JSN-SR04T morts** — Bassin 1 n'a pas de capteur fonctionnel.
 
 ### À FAIRE à la prochaine connexion locale (Hub sur COM6) :
-1. **Flasher le Hub R5.5** — `cd wroom_hub && pio run --target upload` — nouvelle calibration 1-point offset
+1. **Flasher le Hub R5.5** — `cd wroom_hub && pio run --target upload` — INCLURE :
+   - Calibration 1-point offset (déjà codé)
+   - **Filtration stable-state 80ms** pour limit switch dompeur (remplace debounce 500ms + 20s min)
+   - **ArduinoOTA** — permettra toutes les futures mises à jour via WiFi sans USB
+   - C'est le DERNIER flash USB nécessaire si OTA est inclus
 2. **Migrer capteur_bassins de BLE vers WiFi/MQTT** — Le capteur_bassins publie directement sur MQTT au lieu de passer par BLE+Hub. Même volume de données (le Hub publiait déjà). Avantages : temps réel (pas de délai scan 20s), plus fiable.
 3. **Ajouter un 3e ESP32 pour bassin 4** — Nouveau ESP32-WROOM avec 1x JSN-SR04T, WiFi/MQTT direct, publie sur cyd/5ea48c/basin4 et basin4/raw. Même firmware que capteur_bassins migré en WiFi.
 4. **Chaque ESP32 capteur publie ses propres topics** :
@@ -89,14 +93,53 @@ Le répertoire de travail est : C:\Users\ryb086\OneDrive - Groupe R.Y. Beaudoin\
    - nouveau ESP32 → basin4, basin4/raw
    - Hub garde → basin1, basin1/raw (capteur local GPIO 13/14)
 5. **Retirer le scan BLE du Hub** — Plus nécessaire pour les bassins une fois WiFi en place (garder pour Inkbird temp/hum seulement)
-7. **Remplacer debounce limit switch par filtration stable-state** — Remplacer `STABLE_MS 500` par une logique de validation d'état stable :
+7. **Remplacer debounce limit switch par filtration stable-state** — SOLUTION VALIDÉE :
+
+   **Problème** : Le debounce fixe de 500ms + 20s min entre cycles est un workaround rigide. Il peut rater un vrai changement rapide ou laisser passer des vibrations.
+
+   **Solution** : Filtration par validation d'état stable — l'état doit rester identique pendant N ms consécutifs pour être accepté.
+
+   **Principe** :
    ```
-   #define STABLE_TIME_MS 80  // ajuster selon fréquence de vibration
-   // Front détecté → start timer
-   // Si état change avant la fin → reset timer
-   // Si timer complète SANS changement → état validé ✓
+   #define STABLE_TIME_MS 80  // ajuster selon fréquence de vibration réelle du dompeur
+
+   volatile bool rawLimitState = false;     // état brut lu par ISR ou polling
+   bool confirmedLimitState = false;        // état validé (utilisé par le code)
+   bool lastRawState = false;               // dernier état brut observé
+   unsigned long stableStartMs = 0;         // timestamp début de stabilité
+
+   // Dans loop() :
+   bool currentRaw = (digitalRead(LIMIT_SW_PIN) == LOW);  // LOW = actif (pullup)
+
+   if (currentRaw != lastRawState) {
+     // Front détecté → reset timer
+     lastRawState = currentRaw;
+     stableStartMs = millis();
+   } else if (currentRaw != confirmedLimitState) {
+     // État différent du confirmé → vérifier si stable assez longtemps
+     if (millis() - stableStartMs >= STABLE_TIME_MS) {
+       // État stable pendant 80ms → VALIDER
+       confirmedLimitState = currentRaw;
+       // Publier le nouvel état MQTT ici
+       mqtt.publish(topicLimitSw.c_str(), confirmedLimitState ? "1" : "0", true);
+       Serial.printf(">>> Limit switch VALIDÉ: %s\n", confirmedLimitState ? "ACTIVE" : "inactive");
+     }
+   }
    ```
-   L'état doit rester stable pendant 80ms consécutifs pour être accepté. Plus fiable que le debounce fixe de 500ms.
+
+   **Avantages vs debounce fixe** :
+   - Réagit vite si le signal est propre (80ms vs 500ms)
+   - S'adapte naturellement aux vibrations (reset timer à chaque oscillation)
+   - Pas de fenêtre aveugle de 500ms où on ignore tout
+   - Le 20s min entre cycles peut être retiré (la filtration suffit)
+
+   **Paramétrage** : Commencer à 80ms, augmenter si vibrations persistent en conditions réelles de coulée. Valeurs typiques : 50-200ms selon la mécanique du dompeur.
+8. **Ajouter ArduinoOTA au Hub** — Permet les mises à jour firmware via WiFi (plus besoin d'USB après le premier flash).
+   - Ajouter `#include <ArduinoOTA.h>` + `ArduinoOTA.begin()` dans setup + `ArduinoOTA.handle()` dans loop
+   - Mot de passe OTA recommandé pour sécurité (ex: "cabane2025")
+   - Flash via : `pio run --target upload --upload-port <IP_DU_HUB>`
+   - **IMPORTANT** : Doit être flashé en USB la première fois. Après, toutes les updates se font à distance.
+   - Ajouter aussi aux futurs firmware capteur_bassins et bassin 4 pour uniformiser
 6. **Toute calibration via MQTT** — Les calibrations (refRaw/refInches, basinMax) doivent pouvoir être envoyées depuis le dashboard web via MQTT et reçues par chaque ESP32 capteur. Chaque ESP32 s'abonne à ses topics basin{n}/cal et settings/bmax, sauvegarde en NVS, et applique la conversion pouces/% localement.
 
 ### Prochaines tâches possibles :
