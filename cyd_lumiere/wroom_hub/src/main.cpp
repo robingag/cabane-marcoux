@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ArduinoOTA.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <NimBLEDevice.h>
@@ -570,6 +571,20 @@ void setup() {
   server.begin();
   Serial.println("Web server started on port 80");
 
+  // OTA setup
+  ArduinoOTA.setHostname("cabane-hub");
+  ArduinoOTA.setPassword("cabane2025");
+  ArduinoOTA.onStart([]() { Serial.println("OTA: start"); });
+  ArduinoOTA.onEnd([]() { Serial.println("OTA: done, rebooting..."); });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("OTA: %u%%\r", (progress * 100) / total);
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA Error[%u]\n", error);
+  });
+  ArduinoOTA.begin();
+  Serial.println("OTA ready (hostname: cabane-hub, port 3232)");
+
   Serial.println("=== WROOM Hub ready ===");
   Serial.println("Commands: SSID:xxx  PASS:xxx  ID:xxx  RESTART  STATUS");
   memset(dompeurHist, 0, sizeof(dompeurHist));
@@ -601,6 +616,7 @@ void loop() {
 
   checkSerialCommands();
   server.handleClient();
+  ArduinoOTA.handle();
 
   // BLE scan every 20s
   if (millis() - lastBleScan >= BLE_SCAN_INTERVAL) {
