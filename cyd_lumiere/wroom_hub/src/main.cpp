@@ -371,6 +371,9 @@ void publishAll() {
     basin1, basin2, basin3, rawBasin[0], rawBasin[1], rawBasin[2],
     temperature, humidity);
   mqtt.publish(live.c_str(), buf, false);
+  // Publish Hub IP so GitHub Pages dashboard can redirect
+  String ipTopic = "cyd/" + deviceId + "/hubip";
+  mqtt.publish(ipTopic.c_str(), WiFi.localIP().toString().c_str(), true);
 }
 
 // ========== WEB SERVER ==========

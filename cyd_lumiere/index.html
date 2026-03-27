@@ -496,6 +496,7 @@ function go(){
     c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:5000,keepalive:30});
     c.on("connect",function(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
+      c.subscribe(p+"hubip");
       ["state","dompeur","dompeur/live","live","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
       ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm"].forEach(function(t){c.subscribe(p+t)});
@@ -505,6 +506,10 @@ function go(){
     });
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
+      // Auto-redirect to local Hub if on HTTPS (GitHub Pages)
+      if(tp===p+"hubip"&&v&&location.protocol==="https:"){
+        window.location.href="http://"+v+"/";return;
+      }
       if(tp===p+"state")sv(v==="1");
       if(tp===p+"dompeur"){od(v)}
       if(tp===p+"dompeur/live"){document.getElementById("dmp-elapsed").textContent=v}
