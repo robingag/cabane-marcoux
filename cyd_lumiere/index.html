@@ -271,10 +271,8 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260328a";
+var APP_VERSION="20260328b";
 var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
-// Auto-refresh: check for new version every 5 min
-(function(){setInterval(function(){fetch(location.href.split("?")[0]+"?_t="+Date.now(),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){location.reload()}}).catch(function(){})},300000)})();
 (function(){try{var s=localStorage.getItem("hist_"+id);if(s){hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}catch(e){}})();
 var vacOn=false,pinCode="",pendingState=null,slDrag=false,slStartX=0;
 var pinMode="vac",CAL_PIN="123",VAC_PIN="777";
@@ -501,7 +499,7 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","dompeur/live","live","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
       c.publish(p+"settings/dmpTs","",{retain:true});
       c.publish(p+"settings/hist","",{retain:true});
@@ -526,6 +524,7 @@ function go(){
       if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
+      if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
     c.on("close",function(){ss("Reconnexion...","w");setTimeout(tc,3000)});
