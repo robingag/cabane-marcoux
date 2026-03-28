@@ -557,4 +557,6 @@ if(hubUrl){setInterval(pollHub,500)}
 slInit();loadBasinNames();document.getElementById("alarm-chk").checked=alarmOn;go();dg();
 window.addEventListener("resize",dg);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
+// Force cache bust v2.1 - clear old cached calibration data
+(function(){var cv=localStorage.getItem("cv_"+id);if(cv!=="2.1"){localStorage.removeItem("cal_"+id);localStorage.setItem("cv_"+id,"2.1")}})();
 </script></body></html>
