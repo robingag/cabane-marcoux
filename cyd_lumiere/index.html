@@ -271,8 +271,10 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260328b";
+var APP_VERSION="20260328c";
 var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+// Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
+(function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
 (function(){try{var s=localStorage.getItem("hist_"+id);if(s){hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}catch(e){}})();
 var vacOn=false,pinCode="",pendingState=null,slDrag=false,slStartX=0;
 var pinMode="vac",CAL_PIN="123",VAC_PIN="777";
