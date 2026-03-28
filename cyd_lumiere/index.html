@@ -351,7 +351,7 @@ function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("cal
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
-    var raw=rawBasin[n],rawIn=(raw/2.54).toFixed(1);
+    var raw=rawBasin[n],rawIn=Math.round(raw/2.54);
     document.getElementById("rawB"+n).textContent="Brut: "+rawIn+" po ("+raw+" cm)";
     var cal=calData[n];
     if(cal&&cal.refRaw!=null&&cal.refInches!=null){
@@ -380,7 +380,7 @@ function rawToInches(n,currentRaw){
   if(!cal||cal.refRaw==null||cal.refInches==null)return null;
   var deltaRaw=cal.refRaw-currentRaw;
   var deltaInches=deltaRaw/2.54;
-  return Math.round((cal.refInches+deltaInches)*10)/10;
+  return Math.round(cal.refInches+deltaInches);
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).value)||0;basinMax[n]=v;try{localStorage.setItem("bmax_"+id,JSON.stringify(basinMax))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bmax",JSON.stringify(basinMax),{retain:true});sba(n,basinPct[n])}
