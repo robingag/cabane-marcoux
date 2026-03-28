@@ -30,7 +30,7 @@ unsigned long lastMqttRetry = 0;
 String deviceId;
 String mqttTopicState, mqttTopicCmd, mqttTopicDompeur, mqttTopicDompeurLive;
 String mqttTopicTemp, mqttTopicHumidity;
-String mqttTopicBasin1, mqttTopicBasin2, mqttTopicBasin3;
+String mqttTopicBasin1, mqttTopicBasin2, mqttTopicBasin3, mqttTopicBasin4;
 String mqttTopicCal;
 String mqttTopicBmax;
 
@@ -71,16 +71,16 @@ void IRAM_ATTR limitSwitchISR() {
 float temperature = 0.0;
 float humidity = 0.0;
 int bleBattery = -1;
-int basin1 = 0, basin2 = 0, basin3 = 0;
-int rawBasin[3] = {0, 0, 0};
+int basin1 = 0, basin2 = 0, basin3 = 0, basin4 = 0;
+int rawBasin[4] = {0, 0, 0, 0};
 
 // Calibration 1-point offset (matches dashboard)
 // refRaw = raw cm at calibration, refInches = known depth in inches
 // currentInches = refInches + (refRaw - currentRaw) / 2.54
 // percent = currentInches / maxInches * 100
-float calRefRaw[3]    = {-1, -1, -1};
-float calRefInches[3] = {-1, -1, -1};
-float basinMax[3]     = {0, 0, 0};  // max depth in inches per basin
+float calRefRaw[4]    = {-1, -1, -1, -1};
+float calRefInches[4] = {-1, -1, -1, -1};
+float basinMax[4]     = {0, 0, 0, 0};  // max depth in inches per basin
 
 #define GRAPH_MAX 30
 int dompeurHist[GRAPH_MAX];
@@ -196,6 +196,30 @@ class HubScanCallback : public NimBLEAdvertisedDeviceCallbacks {
         if (mfr.size() >= 8) {
           int bat = (uint8_t)mfr[7];  // battery at byte 7
           if (bat >= 0 && bat <= 100) bleBattery = bat;
+        }
+      }
+    }
+
+    // CB4 (capteur bassin 4): bassin 4
+    if (name == "CB4" && device->haveManufacturerData()) {
+      std::string mfr = device->getManufacturerData();
+      Serial.printf(">>> CB4 raw (%d bytes): ", (int)mfr.size());
+      for (int i = 0; i < (int)mfr.size() && i < 8; i++)
+        Serial.printf("%02X ", (uint8_t)mfr[i]);
+      Serial.println();
+      if (mfr.size() >= 5 && (uint8_t)mfr[2] == 0xB4) {
+        uint16_t d4 = (uint8_t)mfr[3] | ((uint8_t)mfr[4] << 8);
+        rawBasin[3] = d4;
+        // 1-point offset calibration for bassin 4
+        if (calRefRaw[3] >= 0 && basinMax[3] > 0) {
+          float in4 = rawToInches(3, d4);
+          basin4 = constrain((int)((in4 / basinMax[3]) * 100.0), 0, 100);
+        }
+        Serial.printf(">>> BLE CB4: B4=%dcm(%d%%)\n", d4, basin4);
+        if (mqtt.connected()) {
+          mqtt.publish(mqttTopicBasin4.c_str(), String(basin4).c_str(), true);
+          String raw4 = "cyd/" + deviceId + "/basin4/raw";
+          mqtt.publish(raw4.c_str(), String(rawBasin[3]).c_str(), true);
         }
       }
     }
@@ -359,17 +383,20 @@ void publishAll() {
   mqtt.publish(mqttTopicBasin1.c_str(), String(basin1).c_str(), true);
   mqtt.publish(mqttTopicBasin2.c_str(), String(basin2).c_str(), true);
   mqtt.publish(mqttTopicBasin3.c_str(), String(basin3).c_str(), true);
+  mqtt.publish(mqttTopicBasin4.c_str(), String(basin4).c_str(), true);
   String r1 = "cyd/" + deviceId + "/basin1/raw";
   String r2 = "cyd/" + deviceId + "/basin2/raw";
   String r3 = "cyd/" + deviceId + "/basin3/raw";
+  String r4 = "cyd/" + deviceId + "/basin4/raw";
   mqtt.publish(r1.c_str(), String(rawBasin[0]).c_str(), true);
   mqtt.publish(r2.c_str(), String(rawBasin[1]).c_str(), true);
   mqtt.publish(r3.c_str(), String(rawBasin[2]).c_str(), true);
+  mqtt.publish(r4.c_str(), String(rawBasin[3]).c_str(), true);
   // Live topic: always delivered (no retain), dashboard subscribes to this
   String live = "cyd/" + deviceId + "/live";
-  char buf[128];
-  snprintf(buf, sizeof(buf), "%d|%d|%d|%d|%d|%d|%.1f|%.1f",
-    basin1, basin2, basin3, rawBasin[0], rawBasin[1], rawBasin[2],
+  char buf[160];
+  snprintf(buf, sizeof(buf), "%d|%d|%d|%d|%d|%d|%d|%d|%.1f|%.1f",
+    basin1, basin2, basin3, basin4, rawBasin[0], rawBasin[1], rawBasin[2], rawBasin[3],
     temperature, humidity);
   mqtt.publish(live.c_str(), buf, false);
   // Publish Hub IP so GitHub Pages dashboard can redirect
@@ -442,11 +469,11 @@ void handleRoot() {
 }
 
 void handleApi() {
-  char json[256];
+  char json[320];
   snprintf(json, sizeof(json),
-    "{\"b1\":%d,\"b2\":%d,\"b3\":%d,\"r1\":%d,\"r2\":%d,\"r3\":%d,"
+    "{\"b1\":%d,\"b2\":%d,\"b3\":%d,\"b4\":%d,\"r1\":%d,\"r2\":%d,\"r3\":%d,\"r4\":%d,"
     "\"t\":%.1f,\"h\":%.1f,\"vac\":%d,\"dmp\":\"%s\"}",
-    basin1, basin2, basin3, rawBasin[0], rawBasin[1], rawBasin[2],
+    basin1, basin2, basin3, basin4, rawBasin[0], rawBasin[1], rawBasin[2], rawBasin[3],
     temperature, humidity, vacuumOn ? 1 : 0, dompeurTime.c_str());
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "application/json", json);
@@ -538,6 +565,7 @@ void setup() {
   mqttTopicBasin1      = "cyd/" + deviceId + "/basin1";
   mqttTopicBasin2      = "cyd/" + deviceId + "/basin2";
   mqttTopicBasin3      = "cyd/" + deviceId + "/basin3";
+  mqttTopicBasin4      = "cyd/" + deviceId + "/basin4";
   mqttTopicCal         = "cyd/" + deviceId + "/cmd/cal";
   mqttTopicBmax        = "cyd/" + deviceId + "/settings/bmax";
   Serial.printf("Device ID: %s\n", deviceId.c_str());
