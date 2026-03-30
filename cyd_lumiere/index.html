@@ -271,8 +271,11 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260330f";
-var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+var APP_VERSION="20260330g";
+var _sp=new URLSearchParams(window.location.search);
+// Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
+(function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
+var c,id=_sp.get("id")||"5ea48c",hist=[];
 // Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
 (function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
 (function(){try{var s=localStorage.getItem("hist_"+id);if(s){hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}catch(e){}})();
@@ -485,7 +488,7 @@ function ss(t,cl){
 function tgMenu(){
   var p=document.getElementById("mnp");var open=p.classList.toggle("open");
   if(open&&!p.dataset.loaded){
-    var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?id="+id;
+    var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?v="+APP_VERSION+"&id="+id;
     document.getElementById("qrurl").textContent=url;
     document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);
     p.dataset.loaded="1";
