@@ -362,6 +362,24 @@ void mqttReconnect() {
   }
 }
 
+void publishDompeurHist() {
+  if (!mqtt.connected() || graphCount == 0) return;
+  // Build JSON array: [380,420,395,...]
+  String json = "[";
+  for (int i = 0; i < graphCount; i++) {
+    if (i > 0) json += ",";
+    json += String(dompeurHist[i]);
+  }
+  json += "]";
+  String histTopic = "cyd/" + deviceId + "/settings/hist";
+  mqtt.publish(histTopic.c_str(), json.c_str(), true);
+  // Also publish dmpTs for dashboard elapsed timer
+  String tsTopic = "cyd/" + deviceId + "/settings/dmpTs";
+  char tsBuf[64];
+  snprintf(tsBuf, sizeof(tsBuf), "{\"ts\":%lu,\"val\":\"%s\"}", millis(), dompeurTime.c_str());
+  mqtt.publish(tsTopic.c_str(), tsBuf, true);
+}
+
 void updateDompeurTime(unsigned long ms) {
   unsigned long sec = ms / 1000;
   char buf[8];
@@ -369,8 +387,10 @@ void updateDompeurTime(unsigned long ms) {
   dompeurTime = String(buf);
   addDompeurPoint((int)sec);
   Serial.printf("Dompeur cycle: %s (%lu ms)\n", buf, ms);
-  if (mqtt.connected())
+  if (mqtt.connected()) {
     mqtt.publish(mqttTopicDompeur.c_str(), dompeurTime.c_str(), true);
+    publishDompeurHist();
+  }
 }
 
 void publishAll() {

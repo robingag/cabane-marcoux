@@ -271,7 +271,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260328c";
+var APP_VERSION="20260330a";
 var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
 // Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
 (function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
@@ -354,7 +354,7 @@ function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("cal
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
-    var raw=rawBasin[n],rawIn=Math.round(raw/2.54);
+    var raw=Math.round(rawBasin[n]),rawIn=Math.round(raw/2.54);
     document.getElementById("rawB"+n).textContent="Brut: "+rawIn+" po ("+raw+" cm)";
     var cal=calData[n];
     if(cal&&cal.refRaw!=null&&cal.refInches!=null){
@@ -522,8 +522,8 @@ function go(){
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);localStorage.setItem("bmax_"+id,v);for(var i=1;i<=4;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
-      if(tp===p+"settings/hist"&&!(packet&&packet.retain)){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
-      if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
+      if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
+      if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
       if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
@@ -544,7 +544,7 @@ if(location.hostname.match(/^192\.168\./)||location.hostname.match(/^10\./)||loc
 function pollHub(){
   if(!hubUrl)return;
   fetch(hubUrl,{mode:"cors"}).then(function(r){return r.json()}).then(function(d){
-    rawBasin[1]=d.r1;rawBasin[2]=d.r2;rawBasin[3]=d.r3;
+    rawBasin[1]=Math.round(d.r1)||0;rawBasin[2]=Math.round(d.r2)||0;rawBasin[3]=Math.round(d.r3)||0;
     sba(1,d.b1);sba(2,d.b2);sba(3,d.b3);
     curTemp=String(d.t);curHum=d.h;updTH();
     sv(d.vac===1);
