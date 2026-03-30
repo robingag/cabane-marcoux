@@ -158,7 +158,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   <div class="mn-item" onclick="testAlarm()" style="cursor:pointer;justify-content:center"><span style="font-size:13px">&#128264; Test Alarme</span></div>
   <div style="border-top:1px solid #1e2d40;margin:8px 0"></div>
   <div class="mn-title" style="font-size:10px">Acc&#232;s Remote</div>
-  <div class="mn-qr"><img id="qrimg" src="" alt="QR"></div>
+  <div class="mn-qr"><div id="qrimg"></div></div>
   <div class="mn-url" id="qrurl"></div>
 </div>
 <div class="w">
@@ -269,9 +269,10 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <button class="cal-close" onclick="closeCal()">Fermer</button>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260330g";
+var APP_VERSION="20260330h";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -490,7 +491,8 @@ function tgMenu(){
   if(open&&!p.dataset.loaded){
     var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?v="+APP_VERSION+"&id="+id;
     document.getElementById("qrurl").textContent=url;
-    document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);
+    var qd=document.getElementById("qrimg");qd.innerHTML="";
+    new QRCode(qd,{text:url,width:160,height:160,colorDark:"#000000",colorLight:"#ffffff"});
     p.dataset.loaded="1";
   }
 }
