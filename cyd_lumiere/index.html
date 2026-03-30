@@ -271,7 +271,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260330c";
+var APP_VERSION="20260330f";
 var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
 // Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
 (function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
@@ -509,7 +509,7 @@ function go(){
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
       if(tp===p+"state")sv(v==="1");
-      if(tp===p+"dompeur"){if(packet&&packet.retain){document.getElementById("dmp").textContent=v}else{od(v)}}
+      if(tp===p+"dompeur"){if(packet&&packet.retain){document.getElementById("dmp").textContent=v}else if(v!==document.getElementById("dmp").textContent){od(v)}}
       if(tp===p+"dompeur/live"&&!dmpTimer){var pp=v.split(":");if(pp.length===2){dmpElapsed=parseInt(pp[0])*60+parseInt(pp[1]);lastDmpTs=Date.now()-dmpElapsed*1000;try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}document.getElementById("dmp-elapsed").textContent=v;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}
       // Live topic: b1%|b2%|b3%|raw1|raw2|raw3|temp|hum — always delivered
       if(tp===p+"live"){var pp=v.split("|");if(pp.length>=8){sba(1,pp[0]);sba(2,pp[1]);sba(3,pp[2]);rawBasin[1]=parseInt(pp[3])||0;rawBasin[2]=parseInt(pp[4])||0;rawBasin[3]=parseInt(pp[5])||0;curTemp=pp[6];curHum=parseFloat(pp[7])||0;updTH();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}}
