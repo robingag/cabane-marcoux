@@ -218,10 +218,6 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <div class="cal-ov" id="calo">
   <div class="cal-box">
     <div class="cal-ttl">Calibration Bassins</div>
-    <div class="unit-toggle">
-      <button id="unit-pct" onclick="setUnit('pct')" class="unit-btn active">%</button>
-      <button id="unit-in" onclick="setUnit('in')" class="unit-btn">Pouces</button>
-    </div>
     <div class="cal-basin" id="calB1">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"></div>
       <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
@@ -286,7 +282,7 @@ var rawBasin={1:0,2:0,3:0,4:0};
 var calData={1:{refRaw:null,refInches:null},2:{refRaw:null,refInches:null},3:{refRaw:null,refInches:null},4:{refRaw:null,refInches:null}};
 document.getElementById("did").textContent=id;
 (function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
-var basinUnit="pct",basinPct={1:0,2:0,3:0,4:0};
+var basinUnit="in",basinPct={1:0,2:0,3:0,4:0};
 var basinMax={1:0,2:0,3:0,4:0};
 var curTemp="--.-",curHum=0;
 var basinNames={1:"B1",2:"B2",3:"B3",4:"B4"};
