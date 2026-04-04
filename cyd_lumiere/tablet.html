@@ -64,42 +64,66 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
   <div class="basin" id="b3"><div class="bn">R&eacute;serve</div><div class="tw"><div class="tank"><div class="fill l" id="f3" style="height:0%"></div></div></div><div class="bv"><span id="v3">--</span> <span class="bu" id="u3"></span></div></div>
   <div class="basin" id="b4"><div class="bn">Perm&eacute;at</div><div class="tw"><div class="tank"><div class="fill l" id="f4" style="height:0%"></div></div></div><div class="bv"><span id="v4">--</span> <span class="bu" id="u4"></span></div></div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
+var id="5ea48c",p="cyd/"+id+"/";
+var rawBasin={1:0,2:0,3:0,4:0},calData={},basinMax={1:42,2:23,3:42,4:34};
+var dmpElapsed=0,dmpTimer=null;
+
 setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
 
-function upB(n,po,pct,raw){
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+
+function rawToInches(n,raw){
+  var cal=calData[n];if(!cal||raw<=0)return null;
+  return cal.refInches+(cal.refRaw-raw)/2.54;
+}
+
+function upB(n,pct){
   var f=document.getElementById("f"+n);
+  if(pct<0)pct=0;if(pct>100)pct=100;
   f.style.height=pct+"%";
   f.className="fill "+(pct>=90?"h":pct>=61?"m":"l");
   var b=document.getElementById("b"+n);
   if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
+  var po=rawToInches(n,rawBasin[n]);
   var v=document.getElementById("v"+n),u=document.getElementById("u"+n);
-  if(po>0){v.textContent=Math.round(po);u.textContent="po";}
-  else if(raw>0){v.textContent=raw;u.textContent="cm";}
+  if(po!==null&&po>=0){v.textContent=Math.round(po);u.textContent="po";}
   else{v.textContent="--";u.textContent="";}
 }
-function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 
-// Demo data for preview (Hub not reachable here)
-var elBase=Date.now();
-function demo(){
-  var el=Math.floor((Date.now()-elBase)/1000);
+function refresh(n){
+  var po=rawToInches(n,rawBasin[n]);
+  var pct=0;
+  if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);}
+  upB(n,pct);
+}
+
+var c=mqtt.connect("wss://broker.hivemq.com:8884/mqtt",{clientId:"tab-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,reconnectPeriod:5000});
+c.on("connect",function(){
   document.getElementById("dot").classList.add("ok");
-  document.getElementById("tmp").textContent="3.4 \u00b0C";
-  document.getElementById("dmp").textContent="08:34";
-  document.getElementById("el").textContent=fmt(el);
-  upB(1,18,60,0); upB(2,22,73,0); upB(3,8,27,0); upB(4,14,47,0);
-}
-
-function poll(){
-  fetch("/api").then(function(r){return r.json();}).then(function(d){
-    document.getElementById("dot").classList.add("ok");
-    document.getElementById("tmp").textContent=(+d.t).toFixed(1)+" \u00b0C";
-    document.getElementById("dmp").textContent=d.dmp;
-    document.getElementById("el").textContent=d.el>0?fmt(d.el):"--:--";
-    upB(1,d.po1,d.b1,d.r1);upB(2,d.po2,d.b2,d.r2);upB(3,d.po3,d.b3,d.r3);upB(4,d.po4||0,d.b4||0,0);
-  }).catch(function(){document.getElementById("dot").classList.remove("ok");demo();});
-}
-setInterval(poll,200);poll();
+  ["basin1","basin2","basin3","basin4","basin1/raw","basin2/raw","basin3/raw","basin4/raw",
+   "basin1/cal","basin2/cal","basin3/cal","basin4/cal",
+   "temp","dompeur","dompeur/live","settings/bmax"].forEach(function(t){c.subscribe(p+t);});
+});
+c.on("offline",function(){document.getElementById("dot").classList.remove("ok");});
+c.on("message",function(tp,m){
+  var v=m.toString();
+  if(tp===p+"temp"){document.getElementById("tmp").textContent=(+v).toFixed(1)+" \u00b0C";}
+  if(tp===p+"dompeur"){document.getElementById("dmp").textContent=v;}
+  if(tp===p+"dompeur/live"){
+    var pp=v.split(":");
+    if(pp.length===2){
+      dmpElapsed=parseInt(pp[0])*60+parseInt(pp[1]);
+      document.getElementById("el").textContent=v;
+      if(!dmpTimer)dmpTimer=setInterval(function(){dmpElapsed++;document.getElementById("el").textContent=fmt(dmpElapsed);},1000);
+    }
+  }
+  if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
+  for(var n=1;n<=4;n++){
+    if(tp===p+"basin"+n+"/cal"){try{calData[n]=JSON.parse(v);refresh(n);}catch(e){}}
+    if(tp===p+"basin"+n+"/raw"){rawBasin[n]=parseInt(v)||0;refresh(n);}
+  }
+});
 </script></body></html>
