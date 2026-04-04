@@ -4,251 +4,99 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#080a0e">
-<title>Cabane Marcoux — Tableau de bord</title>
-<!-- MQTT client -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
+<title>Cabane Marcoux — Tablette</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e0;min-height:100vh;overflow:hidden}
-.dash{display:grid;grid-template-rows:auto 1fr;height:100vh;gap:0}
-
-/* HEADER */
-.hdr{background:linear-gradient(135deg,#0d1520,#0a1018);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;box-shadow:0 4px 24px rgba(0,0,0,.7)}
-.hdr-left{display:flex;align-items:center;gap:16px}
-.hdr-ico{width:44px;height:44px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 14px rgba(245,158,11,.35)}
-.hdr h1{font-size:20px;letter-spacing:4px;font-weight:700;color:#f1f5f9;text-transform:uppercase}
-.hdr-sub{font-size:10px;color:#7a8fa8;letter-spacing:2px}
-.hdr-right{display:flex;align-items:center;gap:16px;font-size:13px;color:#64748b}
-.dot{width:12px;height:12px;border-radius:50%;background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.6)}
-.dot.ok{background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.7)}
-
-/* MAIN */
-.main{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr;gap:16px;padding:16px;overflow:hidden}
-
-/* TOP CARDS */
-.top-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.card{background:linear-gradient(180deg,#0d1520,#0a1220);border:1px solid #1a2840;border-radius:12px;padding:16px;position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
-.card-domp::before{background:linear-gradient(90deg,#f59e0b,#d97706)}
-.card-temp::before{background:linear-gradient(90deg,#06b6d4,#0891b2)}
-.card-label{font-size:11px;letter-spacing:2px;color:#64748b;text-transform:uppercase;margin-bottom:8px}
-.card-val{font-size:42px;font-weight:700;font-variant-numeric:tabular-nums}
-.card-domp .card-val{color:#f59e0b}
-.card-temp .card-val{color:#06b6d4}
-.card-sub{font-size:20px;color:#4ade80;margin-top:4px;font-variant-numeric:tabular-nums}
-
-/* BASINS */
-.basins{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr)!important;gap:16px}
-.basin{background:linear-gradient(180deg,#0d1520,#0a1220);border:1px solid #1a2840;border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
-.basin::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.hdr{background:#0d1520;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;flex-shrink:0}
+.hdr h1{font-size:18px;letter-spacing:3px;font-weight:700;color:#f1f5f9;text-transform:uppercase}
+.hdr-r{display:flex;align-items:center;gap:12px;font-size:12px;color:#64748b}
+.dot{width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.6)}
+.dot.ok{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7)}
+.top{display:flex;gap:12px;padding:10px 12px;flex-shrink:0}
+.card{flex:1;background:#0d1520;border:1px solid #1a2840;border-radius:10px;padding:12px;text-align:center;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.card:nth-child(1)::before{background:linear-gradient(90deg,#f59e0b,#d97706)}
+.card:nth-child(2)::before{background:linear-gradient(90deg,#06b6d4,#0891b2)}
+.card-lbl{font-size:10px;letter-spacing:2px;color:#64748b;text-transform:uppercase;margin-bottom:4px}
+.card-val{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums}
+.card-val.gold{color:#f59e0b}
+.card-val.cyan{color:#06b6d4}
+.card-sub{font-size:18px;color:#4ade80;margin-top:2px;font-variant-numeric:tabular-nums}
+.basins{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 12px 12px;flex:1;min-height:0}
+.basin{background:#0d1520;border:1px solid #1a2840;border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
+.basin::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
 .basin:nth-child(1)::before{background:#3b82f6}
 .basin:nth-child(2)::before{background:#f59e0b}
 .basin:nth-child(3)::before{background:#8b5cf6}
 .basin:nth-child(4)::before{background:#10b981}
-.basin-name{font-size:14px;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:600}
-.tank-wrap{flex:1;width:100%;max-width:120px;display:flex;flex-direction:column;align-items:center}
-.tank{width:100%;flex:1;background:#0a0f18;border:2px solid #1e2d40;border-radius:8px;position:relative;overflow:hidden;min-height:100px}
-.tank-fill{position:absolute;bottom:0;width:100%;transition:height .8s ease,background .5s ease;border-radius:0 0 6px 6px}
-.tank-fill.low{background:linear-gradient(180deg,#22c55e,#16a34a)}
-.tank-fill.mid{background:linear-gradient(180deg,#eab308,#ca8a04)}
-.tank-fill.high{background:linear-gradient(180deg,#ef4444,#dc2626)}
-.tank-lines{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
-.tank-line{position:absolute;left:0;right:0;border-top:1px dashed rgba(255,255,255,.08)}
-.basin-val{margin-top:10px;font-size:28px;font-weight:700;color:#e2e8f0;font-variant-numeric:tabular-nums}
-.basin-unit{font-size:14px;color:#64748b;font-weight:400}
-
-/* FORCE 4 COLUMNS ON ALL SCREENS */
-@media (max-width:800px){
-  .basins{grid-template-columns:repeat(4,1fr)!important}
-  .top-row{grid-template-columns:1fr 1fr!important}
-  .basin-name{font-size:11px}
-  .basin-val{font-size:22px}
-  .card-val{font-size:32px}
-  .hdr h1{font-size:16px}
-  .main{gap:8px;padding:8px}
-  .basins{gap:8px}
-  .top-row{gap:8px}
-}
-
-/* ALERT GLOW */
-@keyframes pulse-red{0%,100%{box-shadow:0 0 0 rgba(239,68,68,0)}50%{box-shadow:0 0 20px rgba(239,68,68,.4)}}
-.basin.alert{animation:pulse-red 1.5s infinite;border-color:#ef4444}
-</style>
-</head>
+.bn{font-size:13px;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.tw{flex:1;width:100%;max-width:110px;display:flex;flex-direction:column;align-items:center;min-height:0}
+.tank{width:100%;flex:1;background:#0a0f18;border:2px solid #1e2d40;border-radius:8px;position:relative;overflow:hidden;min-height:60px}
+.fill{position:absolute;bottom:0;width:100%;transition:height .5s ease;border-radius:0 0 6px 6px}
+.fill.l{background:linear-gradient(180deg,#22c55e,#16a34a)}
+.fill.m{background:linear-gradient(180deg,#eab308,#ca8a04)}
+.fill.h{background:linear-gradient(180deg,#ef4444,#dc2626)}
+.bv{margin-top:8px;font-size:26px;font-weight:700;color:#e2e8f0;font-variant-numeric:tabular-nums}
+.bu{font-size:12px;color:#64748b}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(239,68,68,0)}50%{box-shadow:0 0 16px rgba(239,68,68,.5)}}
+.basin.alert{animation:pulse 1.5s infinite;border-color:#ef4444}
+</style></head>
 <body>
-<div class="dash">
-  <div class="hdr">
-    <div class="hdr-left">
-      <div class="hdr-ico">🍁</div>
-      <div>
-        <h1>Cabane Marcoux</h1>
-        <div class="hdr-sub">Tableau de bord — Temps reel</div>
-      </div>
-    </div>
-    <div class="hdr-right">
-      <span id="clock">--:--</span>
-      <div class="dot" id="mqttDot"></div>
-    </div>
+<div class="hdr">
+  <h1>&#127809; Cabane Marcoux</h1>
+  <div class="hdr-r"><span id="clk">--:--</span><div class="dot" id="dot"></div></div>
+</div>
+<div class="top">
+  <div class="card">
+    <div class="card-lbl">Dompeur &mdash; Dernier cycle</div>
+    <div class="card-val gold" id="dmp">--:--</div>
+    <div class="card-sub" id="el">--:--</div>
   </div>
-
-  <div class="main">
-    <div class="top-row">
-      <div class="card card-domp">
-        <div class="card-label">Dompeur — Dernier cycle</div>
-        <div class="card-val" id="dompCycle">--:--</div>
-        <div class="card-sub" id="dompElapsed">--:--</div>
-      </div>
-      <div class="card card-temp">
-        <div class="card-label">Temperature exterieure</div>
-        <div class="card-val" id="tempVal">-- °C</div>
-      </div>
-    </div>
-
-    <div class="basins">
-      <div class="basin" id="b1">
-        <div class="basin-name">Eau</div>
-        <div class="tank-wrap">
-          <div class="tank">
-            <div class="tank-fill low" id="fill1" style="height:0%"></div>
-            <div class="tank-lines">
-              <div class="tank-line" style="top:25%"></div>
-              <div class="tank-line" style="top:50%"></div>
-              <div class="tank-line" style="top:75%"></div>
-            </div>
-          </div>
-        </div>
-        <div class="basin-val"><span id="val1">0</span> <span class="basin-unit">po</span></div>
-      </div>
-      <div class="basin" id="b2">
-        <div class="basin-name">Concentre</div>
-        <div class="tank-wrap">
-          <div class="tank">
-            <div class="tank-fill low" id="fill2" style="height:0%"></div>
-            <div class="tank-lines">
-              <div class="tank-line" style="top:25%"></div>
-              <div class="tank-line" style="top:50%"></div>
-              <div class="tank-line" style="top:75%"></div>
-            </div>
-          </div>
-        </div>
-        <div class="basin-val"><span id="val2">0</span> <span class="basin-unit">po</span></div>
-      </div>
-      <div class="basin" id="b3">
-        <div class="basin-name">Reserve</div>
-        <div class="tank-wrap">
-          <div class="tank">
-            <div class="tank-fill low" id="fill3" style="height:0%"></div>
-            <div class="tank-lines">
-              <div class="tank-line" style="top:25%"></div>
-              <div class="tank-line" style="top:50%"></div>
-              <div class="tank-line" style="top:75%"></div>
-            </div>
-          </div>
-        </div>
-        <div class="basin-val"><span id="val3">0</span> <span class="basin-unit">po</span></div>
-      </div>
-      <div class="basin" id="b4">
-        <div class="basin-name">Permeat</div>
-        <div class="tank-wrap">
-          <div class="tank">
-            <div class="tank-fill low" id="fill4" style="height:0%"></div>
-            <div class="tank-lines">
-              <div class="tank-line" style="top:25%"></div>
-              <div class="tank-line" style="top:50%"></div>
-              <div class="tank-line" style="top:75%"></div>
-            </div>
-          </div>
-        </div>
-        <div class="basin-val"><span id="val4">0</span> <span class="basin-unit">po</span></div>
-      </div>
-    </div>
+  <div class="card">
+    <div class="card-lbl">Temp&eacute;rature ext&eacute;rieure</div>
+    <div class="card-val cyan" id="tmp">-- &deg;C</div>
   </div>
 </div>
-
+<div class="basins">
+  <div class="basin" id="b1"><div class="bn">Eau</div><div class="tw"><div class="tank"><div class="fill l" id="f1" style="height:0%"></div></div></div><div class="bv"><span id="v1">0</span> <span class="bu">po</span></div></div>
+  <div class="basin" id="b2"><div class="bn">Concentr&eacute;</div><div class="tw"><div class="tank"><div class="fill l" id="f2" style="height:0%"></div></div></div><div class="bv"><span id="v2">0</span> <span class="bu">po</span></div></div>
+  <div class="basin" id="b3"><div class="bn">R&eacute;serve</div><div class="tw"><div class="tank"><div class="fill l" id="f3" style="height:0%"></div></div></div><div class="bv"><span id="v3">0</span> <span class="bu">po</span></div></div>
+  <div class="basin" id="b4"><div class="bn">Perm&eacute;at</div><div class="tw"><div class="tank"><div class="fill l" id="f4" style="height:0%"></div></div></div><div class="bv"><span id="v4">0</span> <span class="bu">po</span></div></div>
+</div>
 <script>
-var id = '5ea48c';
-var prefix = 'cyd/' + id + '/';
-var rawBasin = {1:0,2:0,3:0,4:0};
-var basinPct = {1:0,2:0,3:0,4:0};
-var calData = {1:{refRaw:null,refInches:null},2:{refRaw:null,refInches:null},3:{refRaw:null,refInches:null},4:{refRaw:null,refInches:null}};
-var basinMax = {1:30,2:30,3:30,4:30}; // max inches for % calc
+setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
+document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
 
-function rawToInches(n, raw) {
-  var c = calData[n];
-  if (c && c.refRaw !== null && c.refInches !== null) {
-    var delta = c.refRaw - raw;
-    return Math.round(c.refInches + delta / 2.54);
-  }
-  return Math.round(raw / 2.54);
+function upB(n,po,pct){
+  var f=document.getElementById("f"+n);
+  f.style.height=pct+"%";
+  f.className="fill "+(pct>=90?"h":pct>=61?"m":"l");
+  document.getElementById("v"+n).textContent=Math.round(po);
+  var b=document.getElementById("b"+n);
+  if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
+}
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+
+// Demo data for preview (Hub not reachable here)
+var elBase=Date.now();
+function demo(){
+  var el=Math.floor((Date.now()-elBase)/1000);
+  document.getElementById("dot").classList.add("ok");
+  document.getElementById("tmp").textContent="3.4 \u00b0C";
+  document.getElementById("dmp").textContent="08:34";
+  document.getElementById("el").textContent=fmt(el);
+  upB(1,18,60); upB(2,22,73); upB(3,8,27); upB(4,14,47);
 }
 
-function updateBasin(n) {
-  var raw = rawBasin[n];
-  var po = rawToInches(n, raw);
-  var pct = basinPct[n];
-
-  // Use po for fill if we have calibration
-  if (calData[n].refRaw !== null && basinMax[n] > 0) {
-    pct = Math.round(po / basinMax[n] * 100);
-    if (pct < 0) pct = 0;
-    if (pct > 100) pct = 100;
-  }
-
-  var fill = document.getElementById('fill' + n);
-  fill.style.height = pct + '%';
-  fill.className = 'tank-fill ' + (pct >= 90 ? 'high' : pct >= 61 ? 'mid' : 'low');
-
-  document.getElementById('val' + n).textContent = po;
-
-  var card = document.getElementById('b' + n);
-  if (pct >= 90) card.classList.add('alert');
-  else card.classList.remove('alert');
+function poll(){
+  fetch("/api").then(function(r){return r.json();}).then(function(d){
+    document.getElementById("dot").classList.add("ok");
+    document.getElementById("tmp").textContent=(+d.t).toFixed(1)+" \u00b0C";
+    document.getElementById("dmp").textContent=d.dmp;
+    document.getElementById("el").textContent=d.el>0?fmt(d.el):"--:--";
+    upB(1,d.po1,d.b1);upB(2,d.po2,d.b2);upB(3,d.po3,d.b3);upB(4,d.po4||0,d.b4||0);
+  }).catch(function(){document.getElementById("dot").classList.remove("ok");demo();});
 }
-
-// Clock
-setInterval(function() {
-  var d = new Date();
-  document.getElementById('clock').textContent =
-    String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-}, 10000);
-document.getElementById('clock').textContent = new Date().toTimeString().slice(0,5);
-
-// MQTT connection
-var p = 'cyd/' + id + '/';
-function go() {
-  var urls = ['wss://broker.hivemq.com:8884/mqtt','ws://broker.hivemq.com:8000/mqtt'];
-  var ui = 0;
-  function tc() {
-    var c = mqtt.connect(urls[ui], {clientId:'tab-'+id+'-'+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});
-    c.on('connect', function() {
-      document.getElementById('mqttDot').classList.add('ok');
-      [1,2,3,4].forEach(function(n) {
-        c.subscribe(p+'basin'+n);
-        c.subscribe(p+'basin'+n+'/raw');
-        c.subscribe(p+'basin'+n+'/cal');
-      });
-      c.subscribe(p+'temp');
-      c.subscribe(p+'dompeur');
-      c.subscribe(p+'dompeur/live');
-      c.subscribe(p+'settings/bmax');
-    });
-    c.on('message', function(tp, m) {
-      var v = m.toString();
-      if (tp === p+'temp') { document.getElementById('tempVal').textContent = parseFloat(v).toFixed(1) + ' °C'; }
-      if (tp === p+'dompeur') { document.getElementById('dompCycle').textContent = v; }
-      if (tp === p+'dompeur/live') { document.getElementById('dompElapsed').textContent = v; }
-      if (tp === p+'settings/bmax') { try { basinMax = JSON.parse(v); [1,2,3,4].forEach(updateBasin); } catch(e) {} }
-      for (var n = 1; n <= 4; n++) {
-        if (tp === p+'basin'+n) { basinPct[n] = parseInt(v)||0; updateBasin(n); }
-        if (tp === p+'basin'+n+'/raw') { rawBasin[n] = parseInt(v)||0; updateBasin(n); }
-        if (tp === p+'basin'+n+'/cal') { try { calData[n] = JSON.parse(v); updateBasin(n); } catch(e) {} }
-      }
-    });
-    c.on('error', function() { document.getElementById('mqttDot').classList.remove('ok'); c.end(true); ui=(ui+1)%urls.length; setTimeout(tc,2000); });
-    c.on('close', function() { document.getElementById('mqttDot').classList.remove('ok'); setTimeout(tc,3000); });
-  }
-  tc();
-}
-go();
-</script>
-</body></html>
+setInterval(poll,200);poll();
+</script></body></html>

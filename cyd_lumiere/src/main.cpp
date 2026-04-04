@@ -27,6 +27,7 @@ String mqttTopicTemp;    // cyd/{id}/temp
 String mqttTopicBasin1;  // cyd/{id}/basin1
 String mqttTopicBasin2;  // cyd/{id}/basin2
 String mqttTopicBasin3;  // cyd/{id}/basin3
+String mqttTopicBasin4;  // cyd/{id}/basin4
 String mqttTopicCal;     // cyd/{id}/cmd/cal
 const char* MQTT_BROKER = "broker.hivemq.com";
 const int MQTT_PORT = 1883;
@@ -143,9 +144,16 @@ String mqttTopicHumidity;
 int basin1 = 0;  // 0-100%
 int basin2 = 0;
 int basin3 = 0;
-int rawBasin[3] = {0, 0, 0};  // raw sensor values
-int calLow[3]  = {-1, -1, -1}; // calibration low points (-1 = not set)
-int calHigh[3] = {-1, -1, -1}; // calibration high points
+int basin4 = 0;
+int rawBasin[4] = {0, 0, 0, 0};  // raw sensor values
+int calLow[4]  = {-1, -1, -1, -1}; // calibration low points (-1 = not set)
+int calHigh[4] = {-1, -1, -1, -1}; // calibration high points
+// HTML-style calibration: refRaw (cm) + refInches (po)
+int calRefRaw[4] = {-1, -1, -1, -1};
+int calRefInches[4] = {-1, -1, -1, -1};
+// Cache to avoid flicker
+int prevBasinLevel[4] = {-1, -1, -1, -1};
+int prevRawBasin[4] = {-1, -1, -1, -1};
 
 // PIN entry
 String pinCode = "";
@@ -227,6 +235,8 @@ void drawTempCard();
 void bleScanInkbird();
 void drawTrendGraph();
 void drawBasinCards();
+void drawBasinFrames();
+void drawBasinValues();
 
 // ---- MQTT ----
 void publishState() {
@@ -258,17 +268,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
   }
   // Donnees capteurs entrantes
-  else if (String(topic) == mqttTopicDompeur) {
-    dompeurTime = msg;
-    int colonIdx = msg.indexOf(':');
-    if (colonIdx > 0) {
-      int mins = msg.substring(0, colonIdx).toInt();
-      int secs = msg.substring(colonIdx + 1).toInt();
-      addDompeurPoint(mins * 60 + secs);
-    }
-    Serial.printf(">>> MQTT: Dompeur = %s\n", msg.c_str());
-    if (currentScreen == SCREEN_MAIN && !menuOpen) drawDompeurCard();
-  }
+  // Dompeur MQTT callback removed
   else if (String(topic) == mqttTopicTemp) {
     temperature = msg.toFloat();
     Serial.printf(">>> MQTT: Temp = %.1f\n", temperature);
@@ -277,17 +277,22 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   else if (String(topic) == mqttTopicBasin1) {
     basin1 = msg.toInt();
     Serial.printf(">>> MQTT: Basin1 = %d%%\n", basin1);
-    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
   }
   else if (String(topic) == mqttTopicBasin2) {
     basin2 = msg.toInt();
     Serial.printf(">>> MQTT: Basin2 = %d%%\n", basin2);
-    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
   }
   else if (String(topic) == mqttTopicBasin3) {
     basin3 = msg.toInt();
     Serial.printf(">>> MQTT: Basin3 = %d%%\n", basin3);
-    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
+  }
+  else if (String(topic) == mqttTopicBasin4) {
+    basin4 = msg.toInt();
+    Serial.printf(">>> MQTT: Basin4 = %d%%\n", basin4);
+    if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
   }
   // Calibration command from MQTT dashboard
   else if (String(topic) == mqttTopicCal) {
@@ -302,7 +307,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       int pEnd = msg.indexOf('"', pStart);
       if (pStart > 0 && pEnd > pStart) point = msg.substring(pStart, pEnd);
 
-      if (basin >= 1 && basin <= 3) {
+      if (basin >= 1 && basin <= 4) {
         int idx = basin - 1;
         if (point == "low") {
           calLow[idx] = rawBasin[idx];
@@ -332,7 +337,35 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         mqtt.publish(rawTopic.c_str(), String(rawBasin[idx]).c_str(), true);
 
         // Redraw if on main screen
-        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
+      }
+    }
+  }
+  else {
+    String topicStr = String(topic);
+    for (int i = 0; i < 4; i++) {
+      // Handle raw basin topics
+      String rawTopic = "cyd/" + deviceId + "/basin" + String(i + 1) + "/raw";
+      if (topicStr == rawTopic) {
+        rawBasin[i] = msg.toInt();
+        Serial.printf(">>> MQTT: Basin%d raw = %dcm\n", i + 1, rawBasin[i]);
+        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
+        break;
+      }
+      // Handle cal topics: {"refRaw":XX,"refInches":YY}
+      String calTopic = "cyd/" + deviceId + "/basin" + String(i + 1) + "/cal";
+      if (topicStr == calTopic) {
+        int rr = msg.indexOf("\"refRaw\":");
+        int ri = msg.indexOf("\"refInches\":");
+        if (rr >= 0 && ri >= 0) {
+          calRefRaw[i] = msg.substring(rr + 9, msg.indexOf(',', rr)).toInt();
+          calRefInches[i] = msg.substring(ri + 12, msg.indexOf('}', ri)).toInt();
+          Serial.printf(">>> MQTT: Basin%d cal refRaw=%d refInches=%d\n", i + 1, calRefRaw[i], calRefInches[i]);
+          // Invalidate cache to force redraw with new calibration
+          prevRawBasin[i] = -999;
+          if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
+        }
+        break;
       }
     }
   }
@@ -352,21 +385,29 @@ void mqttConnect() {
   if (mqtt.connect(clientId.c_str())) {
     Serial.println("MQTT: connecte!");
     mqtt.subscribe(mqttTopicCmd.c_str());
-    mqtt.subscribe(mqttTopicDompeur.c_str());
+    // mqtt.subscribe(mqttTopicDompeur.c_str()); // removed
     mqtt.subscribe(mqttTopicTemp.c_str());
     mqtt.subscribe(mqttTopicBasin1.c_str());
     mqtt.subscribe(mqttTopicBasin2.c_str());
     mqtt.subscribe(mqttTopicBasin3.c_str());
+    mqtt.subscribe(mqttTopicBasin4.c_str());
     mqtt.subscribe(mqttTopicCal.c_str());
-    mqtt.subscribe(mqttTopicDompeurLive.c_str());
+    // mqtt.subscribe(mqttTopicDompeurLive.c_str()); // removed
     mqtt.subscribe(mqttTopicHumidity.c_str());
     // Subscribe to raw basin values for calibration screen
     String rawSub1 = "cyd/" + deviceId + "/basin1/raw";
     String rawSub2 = "cyd/" + deviceId + "/basin2/raw";
     String rawSub3 = "cyd/" + deviceId + "/basin3/raw";
+    String rawSub4 = "cyd/" + deviceId + "/basin4/raw";
     mqtt.subscribe(rawSub1.c_str());
     mqtt.subscribe(rawSub2.c_str());
     mqtt.subscribe(rawSub3.c_str());
+    mqtt.subscribe(rawSub4.c_str());
+    // Subscribe to cal topics (refRaw/refInches from HTML dashboard)
+    for (int i = 1; i <= 4; i++) {
+      String calSub = "cyd/" + deviceId + "/basin" + String(i) + "/cal";
+      mqtt.subscribe(calSub.c_str());
+    }
     publishState();
   } else {
     Serial.printf("MQTT: echec (rc=%d)\n", mqtt.state());
@@ -449,37 +490,36 @@ void drawHeader() {
 }
 
 void drawDompeurCard() {
-  int cx = 4, cy = 28, cw = SW - 8, ch = 72;
+  int cx = 4, cy = 4, cw = 154, ch = 68;
   tft.fillRoundRect(cx, cy, cw, ch, 6, C_CARD);
   tft.drawRoundRect(cx, cy, cw, ch, 6, C_BORDER);
+  tft.fillRect(cx, cy, cw, 2, C_AMBER);
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
-  tft.drawString("DOMPEUR", cx + 10, cy + 6);
+  tft.drawString("DOMPEUR", cx + 8, cy + 5);
 
   unsigned long elapsedMs = (lsLastEdge > 0) ? (millis() - lsLastEdge) : 0;
   unsigned long elapsed = elapsedMs / 1000;
   int eMin = elapsed / 60;
   int eSec = elapsed % 60;
 
-  // Dernier cycle ou reset
-  tft.setTextSize(3);
+  // Dernier cycle
+  tft.setTextSize(2);
   tft.setTextDatum(MC_DATUM);
   if (dompeurReset) {
     tft.setTextColor(C_TXT_GRAY, C_CARD);
-    tft.drawString("--:--", cx + cw / 2, cy + 32);
+    tft.drawString("--:--", cx + cw / 2, cy + 28);
   } else if (lsLastEdge > 0 && elapsedMs >= DOMPEUR_ALERT_MS) {
-    // >15 min: clignotement rouge (toggle chaque 500ms)
     bool blink = (millis() / 500) % 2;
-    uint16_t col = blink ? C_RED : C_CARD;
-    tft.setTextColor(col, C_CARD);
-    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
+    tft.setTextColor(blink ? C_RED : C_CARD, C_CARD);
+    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 28);
   } else {
     tft.setTextColor(C_CYAN, C_CARD);
-    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 32);
+    tft.drawString(dompeurTime.c_str(), cx + cw / 2, cy + 28);
   }
 
-  // Compteur temps reel depuis dernier front
+  // Compteur temps reel
   char eBuf[8];
   if (dompeurReset || lsLastEdge == 0) {
     snprintf(eBuf, sizeof(eBuf), "--:--");
@@ -495,31 +535,28 @@ void drawDompeurCard() {
     tft.setTextSize(2);
     tft.setTextColor(C_GREEN, C_CARD);
   }
-  tft.drawString(eBuf, cx + cw / 2, cy + 58);
+  tft.drawString(eBuf, cx + cw / 2, cy + 52);
 }
 
 void drawTempCard() {
-  int cx = 162, cy = 34, cw = 154, ch = 34;
+  int cx = 162, cy = 4, cw = 154, ch = 68;
+  tft.fillRoundRect(cx, cy, cw, ch, 6, C_CARD);
+  tft.drawRoundRect(cx, cy, cw, ch, 6, C_BORDER);
   tft.fillRect(cx, cy, cw, 2, C_CYAN);
-  tft.fillRoundRect(cx, cy + 2, cw, ch - 2, 4, C_CARD);
-  tft.drawRoundRect(cx, cy + 2, cw, ch - 2, 4, C_BORDER);
   tft.setTextFont(1); tft.setTextSize(1);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(C_TXT_GRAY, C_CARD);
-  tft.drawString("TEMP / HUMID", cx + 8, cy + 5);
-  tft.setTextSize(2);
+  tft.drawString("TEMPERATURE", cx + 8, cy + 5);
+  tft.setTextSize(3);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(C_CYAN, C_CARD);
-  String tempStr = String(temperature, 1) + "C";
-  if (humidity > 0) {
-    tempStr += " " + String((int)humidity) + "%";
-  }
-  tft.drawString(tempStr.c_str(), cx + cw / 2, cy + 24);
+  String tempStr = String(temperature, 1) + " C";
+  tft.drawString(tempStr.c_str(), cx + cw / 2, cy + 40);
 }
 
 // ---- Trend Graph ----
 void drawTrendGraph() {
-  int gx = 4, gy = 78, gw = SW - 8, gh = 44;
+  int gx = 4, gy = 100, gw = SW - 8, gh = 44;
   tft.fillRect(gx, gy, 2, gh, C_BLUE);
   tft.fillRoundRect(gx + 2, gy, gw - 2, gh, 4, C_CARD);
   tft.drawRoundRect(gx + 2, gy, gw - 2, gh, 4, C_BORDER);
@@ -592,17 +629,28 @@ void drawTrendGraph() {
 }
 
 // ---- Basins (horizontal bars) ----
-void drawBasinTank(int cx, int tankW, int tankH, int topY, const char* name, int level) {
-  // Name label above tank
+// Draw static frame (called once)
+void drawBasinTankFrame(int cx, int tankW, int tankH, int topY, const char* name) {
   tft.setTextFont(2); tft.setTextSize(1);
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(C_LABEL, C_CARD);
   tft.drawString(name, cx + tankW / 2, topY);
-  // Tank border
   int ty = topY + 16;
   tft.fillRect(cx, ty, tankW, tankH, C_SB_BG);
   tft.drawRect(cx, ty, tankW, tankH, C_BORDER);
-  // Graduation lines (25%, 50%, 75%)
+  for (int g = 1; g <= 3; g++) {
+    int gy = ty + tankH - (tankH * g * 25 / 100);
+    tft.drawFastHLine(cx + 1, gy, 4, C_BORDER);
+    tft.drawFastHLine(cx + tankW - 5, gy, 4, C_BORDER);
+  }
+}
+
+// Update fill + percentage only (no flicker)
+void drawBasinTankValue(int cx, int tankW, int tankH, int topY, int level) {
+  int ty = topY + 16;
+  // Clear inside tank (keep border)
+  tft.fillRect(cx + 1, ty + 1, tankW - 2, tankH - 2, C_SB_BG);
+  // Redraw graduation lines over cleared area
   for (int g = 1; g <= 3; g++) {
     int gy = ty + tankH - (tankH * g * 25 / 100);
     tft.drawFastHLine(cx + 1, gy, 4, C_BORDER);
@@ -612,16 +660,51 @@ void drawBasinTank(int cx, int tankW, int tankH, int topY, const char* name, int
   int fillH = (tankH - 2) * level / 100;
   if (fillH > 0) {
     uint16_t bc = C_GREEN;
-    if (level >= 91) bc = C_RED;
+    if (level >= 90) bc = C_RED;
     else if (level >= 61) bc = C_YELLOW;
     tft.fillRect(cx + 1, ty + tankH - 1 - fillH, tankW - 2, fillH, bc);
   }
-  // Percentage below tank
+  // Percentage below tank (overwrite with background color)
   tft.setTextDatum(TC_DATUM);
-  tft.setTextColor(C_TXT, C_CARD);
   tft.setTextFont(2); tft.setTextSize(1);
+  // Clear old text area
+  tft.fillRect(cx, ty + tankH + 2, tankW, 18, C_CARD);
+  tft.setTextColor(C_TXT, C_CARD);
   String pct = String(level) + "%";
   tft.drawString(pct.c_str(), cx + tankW / 2, ty + tankH + 3);
+}
+
+// Convert raw cm to inches using HTML-style calibration
+float rawToInches(int basinIdx, int rawCm) {
+  if (calRefRaw[basinIdx] >= 0 && calRefInches[basinIdx] >= 0) {
+    // Same formula as HTML: deltaRaw = refRaw - currentRaw; deltaInches = deltaRaw / 2.54; result = refInches + deltaInches
+    float deltaRaw = calRefRaw[basinIdx] - rawCm;
+    float deltaInches = deltaRaw / 2.54;
+    return calRefInches[basinIdx] + deltaInches;
+  }
+  // Fallback: simple conversion
+  return rawCm / 2.54;
+}
+
+// Update fill + percentage + inches
+void drawBasinTankValueInches(int cx, int tankW, int tankH, int topY, int level, int rawCm, int basinIdx) {
+  drawBasinTankValue(cx, tankW, tankH, topY, level);
+  // Overwrite percentage with inches
+  int ty = topY + 16;
+  tft.fillRect(cx, ty + tankH + 2, tankW, 18, C_CARD);
+  tft.setTextDatum(TC_DATUM);
+  tft.setTextFont(2); tft.setTextSize(1);
+  tft.setTextColor(C_TXT, C_CARD);
+  float inches = rawToInches(basinIdx, rawCm);
+  int roundedInches = (int)round(inches);
+  String inStr = String(roundedInches) + " po";
+  tft.drawString(inStr.c_str(), cx + tankW / 2, ty + tankH + 3);
+}
+
+// Legacy compat wrapper
+void drawBasinTank(int cx, int tankW, int tankH, int topY, const char* name, int level) {
+  drawBasinTankFrame(cx, tankW, tankH, topY, name);
+  drawBasinTankValue(cx, tankW, tankH, topY, level);
 }
 
 void drawGearIcon(int x, int y) {
@@ -636,17 +719,42 @@ void drawGearIcon(int x, int y) {
   }
 }
 
+// Basin layout constants
+const int BASIN_CY = 76, BASIN_CH = 160;
+const int BASIN_TW = 60, BASIN_TH = 110;
+
+int basinGap() { return (SW - 8 - 4 * BASIN_TW) / 5; }
+int basinTopY() { return BASIN_CY + 6; }
+int basinX(int i) { return 4 + basinGap() * (i + 1) + BASIN_TW * i; }
+
+// Draw static frames (call once at screen init)
+void drawBasinFrames() {
+  tft.fillRoundRect(4, BASIN_CY, SW - 8, BASIN_CH, 6, C_CARD);
+  tft.drawRoundRect(4, BASIN_CY, SW - 8, BASIN_CH, 6, C_BORDER);
+  int ty = basinTopY();
+  drawBasinTankFrame(basinX(0), BASIN_TW, BASIN_TH, ty, "Eau");
+  drawBasinTankFrame(basinX(1), BASIN_TW, BASIN_TH, ty, "Concentre");
+  drawBasinTankFrame(basinX(2), BASIN_TW, BASIN_TH, ty, "Reserve");
+  drawBasinTankFrame(basinX(3), BASIN_TW, BASIN_TH, ty, "Permeat");
+}
+
+// Update values only (no flicker)
+void drawBasinValues() {
+  int ty = basinTopY();
+  int levels[4] = {basin1, basin2, basin3, basin4};
+  for (int i = 0; i < 4; i++) {
+    if (levels[i] != prevBasinLevel[i] || rawBasin[i] != prevRawBasin[i]) {
+      drawBasinTankValueInches(basinX(i), BASIN_TW, BASIN_TH, ty, levels[i], rawBasin[i], i);
+      prevBasinLevel[i] = levels[i];
+      prevRawBasin[i] = rawBasin[i];
+    }
+  }
+}
+
+// Full draw (frame + values) - for initial screen
 void drawBasinCards() {
-  int cy = 88, ch = 148;
-  tft.fillRoundRect(4, cy, SW - 8, ch, 6, C_CARD);
-  tft.drawRoundRect(4, cy, SW - 8, ch, 6, C_BORDER);
-  // 3 vertical tanks side by side
-  int tankW = 70, tankH = 95;
-  int gap = (SW - 8 - 3 * tankW) / 4;
-  int topY = cy + 8;
-  drawBasinTank(4 + gap, tankW, tankH, topY, "Eau erable", basin1);
-  drawBasinTank(4 + gap * 2 + tankW, tankW, tankH, topY, "Concentre", basin2);
-  drawBasinTank(4 + gap * 3 + tankW * 2, tankW, tankH, topY, "Permeat", basin3);
+  drawBasinFrames();
+  drawBasinValues();
 }
 
 void drawVacuumBtn() {
@@ -960,8 +1068,8 @@ void handleCalibTouch(int tx, int ty) {
 
 void drawMainScreen() {
   tft.fillScreen(C_BG);
-  drawHeader();
   drawDompeurCard();
+  drawTempCard();
   drawBasinCards();
 }
 
@@ -1692,7 +1800,7 @@ class InkbirdScanCallback : public NimBLEAdvertisedDeviceCallbacks {
           mqtt.publish(raw2Topic.c_str(), String(rawBasin[1]).c_str(), true);
           mqtt.publish(raw3Topic.c_str(), String(rawBasin[2]).c_str(), true);
         }
-        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinCards();
+        if (currentScreen == SCREEN_MAIN && !menuOpen) drawBasinValues();
       }
     }
 
@@ -1821,6 +1929,7 @@ void setup() {
   mqttTopicBasin1 = "cyd/" + deviceId + "/basin1";
   mqttTopicBasin2 = "cyd/" + deviceId + "/basin2";
   mqttTopicBasin3 = "cyd/" + deviceId + "/basin3";
+  mqttTopicBasin4 = "cyd/" + deviceId + "/basin4";
   // Additional topics for calibration
   String mqttTopicRaw1 = "cyd/" + deviceId + "/raw1";
   String mqttTopicRaw2 = "cyd/" + deviceId + "/raw2";
@@ -1993,15 +2102,7 @@ void loop() {
 
   // Dompeur reset is now handled by Hub via MQTT
 
-  // Rafraichir compteur dompeur chaque seconde (500ms en mode alerte pour le clignotement)
-  static unsigned long lastDompeurRefresh = 0;
-  static unsigned long lastDompeurMqtt = 0;
-  unsigned long dompeurElapsed = (lsLastEdge > 0) ? (millis() - lsLastEdge) : 0;
-  unsigned long refreshRate = (dompeurElapsed >= DOMPEUR_ALERT_MS && !dompeurReset) ? 500 : 1000;
-  if (currentScreen == SCREEN_MAIN && !menuOpen && millis() - lastDompeurRefresh > refreshRate) {
-    lastDompeurRefresh = millis();
-    drawDompeurCard();
-  }
+  // Dompeur removed - basin 4 added
   // REMOVED: local dompeur MQTT live publishing (Hub publishes dompeur/live)
 
   int sx, sy;
