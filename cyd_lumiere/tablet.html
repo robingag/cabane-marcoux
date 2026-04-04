@@ -59,22 +59,25 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
   </div>
 </div>
 <div class="basins">
-  <div class="basin" id="b1"><div class="bn">Eau</div><div class="tw"><div class="tank"><div class="fill l" id="f1" style="height:0%"></div></div></div><div class="bv"><span id="v1">0</span> <span class="bu">po</span></div></div>
-  <div class="basin" id="b2"><div class="bn">Concentr&eacute;</div><div class="tw"><div class="tank"><div class="fill l" id="f2" style="height:0%"></div></div></div><div class="bv"><span id="v2">0</span> <span class="bu">po</span></div></div>
-  <div class="basin" id="b3"><div class="bn">R&eacute;serve</div><div class="tw"><div class="tank"><div class="fill l" id="f3" style="height:0%"></div></div></div><div class="bv"><span id="v3">0</span> <span class="bu">po</span></div></div>
-  <div class="basin" id="b4"><div class="bn">Perm&eacute;at</div><div class="tw"><div class="tank"><div class="fill l" id="f4" style="height:0%"></div></div></div><div class="bv"><span id="v4">0</span> <span class="bu">po</span></div></div>
+  <div class="basin" id="b1"><div class="bn">Eau</div><div class="tw"><div class="tank"><div class="fill l" id="f1" style="height:0%"></div></div></div><div class="bv"><span id="v1">--</span> <span class="bu" id="u1"></span></div></div>
+  <div class="basin" id="b2"><div class="bn">Concentr&eacute;</div><div class="tw"><div class="tank"><div class="fill l" id="f2" style="height:0%"></div></div></div><div class="bv"><span id="v2">--</span> <span class="bu" id="u2"></span></div></div>
+  <div class="basin" id="b3"><div class="bn">R&eacute;serve</div><div class="tw"><div class="tank"><div class="fill l" id="f3" style="height:0%"></div></div></div><div class="bv"><span id="v3">--</span> <span class="bu" id="u3"></span></div></div>
+  <div class="basin" id="b4"><div class="bn">Perm&eacute;at</div><div class="tw"><div class="tank"><div class="fill l" id="f4" style="height:0%"></div></div></div><div class="bv"><span id="v4">--</span> <span class="bu" id="u4"></span></div></div>
 </div>
 <script>
 setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
 
-function upB(n,po,pct){
+function upB(n,po,pct,raw){
   var f=document.getElementById("f"+n);
   f.style.height=pct+"%";
   f.className="fill "+(pct>=90?"h":pct>=61?"m":"l");
-  document.getElementById("v"+n).textContent=Math.round(po);
   var b=document.getElementById("b"+n);
   if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
+  var v=document.getElementById("v"+n),u=document.getElementById("u"+n);
+  if(po>0){v.textContent=Math.round(po);u.textContent="po";}
+  else if(raw>0){v.textContent=raw;u.textContent="cm";}
+  else{v.textContent="--";u.textContent="";}
 }
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 
@@ -86,7 +89,7 @@ function demo(){
   document.getElementById("tmp").textContent="3.4 \u00b0C";
   document.getElementById("dmp").textContent="08:34";
   document.getElementById("el").textContent=fmt(el);
-  upB(1,18,60); upB(2,22,73); upB(3,8,27); upB(4,14,47);
+  upB(1,18,60,0); upB(2,22,73,0); upB(3,8,27,0); upB(4,14,47,0);
 }
 
 function poll(){
@@ -95,7 +98,7 @@ function poll(){
     document.getElementById("tmp").textContent=(+d.t).toFixed(1)+" \u00b0C";
     document.getElementById("dmp").textContent=d.dmp;
     document.getElementById("el").textContent=d.el>0?fmt(d.el):"--:--";
-    upB(1,d.po1,d.b1);upB(2,d.po2,d.b2);upB(3,d.po3,d.b3);upB(4,d.po4||0,d.b4||0);
+    upB(1,d.po1,d.b1,d.r1);upB(2,d.po2,d.b2,d.r2);upB(3,d.po3,d.b3,d.r3);upB(4,d.po4||0,d.b4||0,0);
   }).catch(function(){document.getElementById("dot").classList.remove("ok");demo();});
 }
 setInterval(poll,200);poll();
