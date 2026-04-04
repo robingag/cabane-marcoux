@@ -176,7 +176,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <div class="tank"><span class="nl">B1</span><div class="tw"><div class="tf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
       <div class="tank"><span class="nl">B2</span><div class="tw"><div class="tf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
       <div class="tank"><span class="nl">B3</span><div class="tw"><div class="tf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
-      <div class="tank"><span class="nl">B4</span><div class="tw"><div class="tf" id="bf4"></div></div><span class="pc" id="bp4">--%</span></div>
+      <div class="tank"><span class="nl">B4</span><div class="tw"><div class="tf" id="bf4"></div><div id="b4min" style="position:absolute;left:0;right:0;height:2px;background:#ef4444;box-shadow:0 0 4px rgba(239,68,68,.8);pointer-events:none;display:none"></div></div><span class="pc" id="bp4">--%</span></div>
     </div>
   </div>
   <div class="sec"><span>Contr&#244;le vacuum</span></div>
@@ -264,7 +264,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260404e";
+var APP_VERSION="20260404f";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -385,7 +385,7 @@ function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}c
 function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).value)||0;basinMax[n]=v;try{localStorage.setItem("bmax_"+id,JSON.stringify(basinMax))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bmax",JSON.stringify(basinMax),{retain:true});sba(n,basinPct[n])}
 function sv(on){vacOn=on;updSlider()}
 function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
-function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}}
+function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}if(n===4){var mk=document.getElementById("b4min");if(mk&&basinMax[4]>0){var mp=22/basinMax[4];if(mp<=1){mk.style.display="block";mk.style.bottom=(mp*100)+"%";mk.style.top="auto"}else{mk.style.display="none"}}}}
 function syncDepthUI(){}
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
 function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=4;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
