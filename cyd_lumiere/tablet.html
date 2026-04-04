@@ -77,7 +77,8 @@ function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60)
 
 function rawToInches(n,raw){
   var cal=calData[n];if(!cal||raw<=0)return null;
-  return cal.refInches+(cal.refRaw-raw)/2.54;
+  var val=cal.refInches+(cal.refRaw-raw)/2.54;
+  return val<0?0:val;
 }
 
 function upB(n,pct){
