@@ -133,10 +133,6 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cal-max{width:70px}
 .cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;margin-top:6px;transition:all .2s}
 .cal-close:active{border-color:#1e2d40;color:#475569}
-/* UNIT TOGGLE */
-.unit-toggle{display:flex;gap:4px;justify-content:center;margin-bottom:14px}
-.unit-btn{flex:1;padding:8px 0;border:1px solid #1a2332;border-radius:4px;background:none;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:all .2s}
-.unit-btn.active{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-color:#f59e0b}
 /* STATUS BAR */
 .sb{background:#060810;border:1px solid #111a26;border-radius:4px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:'Courier New',monospace;font-size:10px;color:#4a6080}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:#4a6080;margin-right:8px;display:inline-block;vertical-align:middle}
@@ -390,7 +386,7 @@ function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).va
 function sv(on){vacOn=on;updSlider()}
 function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}}
-function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"")}
+function syncDepthUI(){}
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
 function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=4;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
