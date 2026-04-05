@@ -269,7 +269,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260405b";
+var APP_VERSION="20260405c";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -405,21 +405,25 @@ function dg(){
     ctx.fillText("En attente de la prochaine coul\u00e9e!",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
   }
-  var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
-  if(rg<10){mn-=5;mx+=5;rg=mx-mn}
-  var p={l:32,r:8,t:8,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;
+  var MAX=300,n=hist.length;
+  var pad={l:32,r:8,t:8,b:14},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   ctx.strokeStyle="#111a26";ctx.setLineDash([2,5]);
-  for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
+  for(var i=0;i<=2;i++){var gy=pad.t+ch*i/2;ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+cw,gy);ctx.stroke()}
   ctx.setLineDash([]);
   ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
-  ctx.fillText(mn+"s",p.l-4,p.t+7);ctx.fillText(mx+"s",p.l-4,p.t+ch+4);
-  ctx.lineWidth=1.5;ctx.lineJoin="round";
+  ctx.fillText("0s",pad.l-4,pad.t+7);ctx.fillText("5m",pad.l-4,pad.t+ch+4);
+  var pts=[];
+  for(var i=0;i<n;i++){var s=Math.min(hist[i],MAX);pts.push({x:pad.l+i*cw/(n-1),y:pad.t+s/MAX*ch})}
+  ctx.lineWidth=1.5;ctx.lineJoin="round";ctx.strokeStyle="#22c55e";
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
   for(var i=1;i<n;i++){
-    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+(hist[i]-mn)*ch/rg;
-    ctx.strokeStyle=hist[i]<=hist[i-1]?"#22c55e":"#ef4444";
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    var q0=pts[i>1?i-2:0],q1=pts[i-1],q2=pts[i],q3=pts[i<n-1?i+1:i];
+    var t=0.4;
+    var cp1x=q1.x+(q2.x-q0.x)*t/3,cp1y=q1.y+(q2.y-q0.y)*t/3;
+    var cp2x=q2.x-(q3.x-q1.x)*t/3,cp2y=q2.y-(q3.y-q1.y)*t/3;
+    ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,q2.x,q2.y);
   }
-  var a=document.getElementById("ar");
+  ctx.stroke();
   updateMeo();
 }
 function updateMeo(){var a=document.getElementById("ar");if(!meoOn){a.textContent="";a.style.color="";return}var _p2=basinMax[2]>0?Math.round(rawToInches(2,rawBasin[2])/basinMax[2]*100):100,_p3=basinMax[3]>0?Math.round(rawToInches(3,rawBasin[3])/basinMax[3]*100):100;if(_p2<20&&_p3<20){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.style.color="#ef4444";return}if(hist.length>0&&hist[hist.length-1]<80){var po1=rawToInches(1,rawBasin[1]),po2=rawToInches(2,rawBasin[2]);if(po1!==null&&po1>20&&po2!==null&&po2>12){a.textContent="Chauffe M\u00e9o on a de l'eau!";a.style.color="#22c55e";return}a.textContent="Ca coule en Fou!";a.style.color="#22c55e";return}a.textContent="";a.style.color=""}
