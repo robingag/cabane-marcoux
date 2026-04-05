@@ -283,7 +283,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260405e";
+var APP_VERSION="20260405f";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -500,7 +500,7 @@ function tgMeoFromMenu(){meoOn=document.getElementById("meo-chk").checked;syncMe
 function setMeo(v){meoOn=v;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
 function syncMeoUI(){document.getElementById("meo-chk").checked=meoOn}
 var dmpElapsed=0,dmpTimer=null,idleTimer=null,lastDmpTs=0;
-(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}else if(hist.length>0){hist=[];localStorage.removeItem("hist_"+id)}}catch(e){}})();
+(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}}catch(e){}})();
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=Date.now();try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
 function triggerDmpAnim(){var cd=document.getElementById("dmp-card"),ic=document.getElementById("dmp-ico");cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim");void cd.offsetWidth;cd.classList.add("dmp-anim");ic.classList.add("dmp-anim");setTimeout(function(){cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim")},1550)}
@@ -615,7 +615,7 @@ function drawBasinTrend(){
   if(leg){var parts=[];[1,2,3,4].forEach(function(n){if(basinHist[n].length>0)parts.push('<span style="color:'+colors[n]+'">&#9632; '+(basinNames[n]||"B"+n)+'</span>')});leg.innerHTML=parts.join(" ")}
 }
 window.addEventListener("resize",function(){dg();drawBasinTrend()});
-document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(c&&c.connected){var p="cyd/"+id+"/";c.unsubscribe([p+"settings/hist",p+"settings/dmpTs"],function(){c.subscribe(p+"settings/hist");c.subscribe(p+"settings/dmpTs")})}else{go()}});
+document.addEventListener("visibilitychange",function(){if(document.hidden)return;try{var _hs=localStorage.getItem("hist_"+id);if(_hs){var _hh=JSON.parse(_hs);if(_hh.length>0){hist=_hh;if(hist.length>30)hist=hist.slice(-30)}}}catch(e){}dg();if(c&&c.connected){var _p="cyd/"+id+"/";c.unsubscribe([_p+"settings/hist",_p+"settings/dmpTs"],function(){c.subscribe(_p+"settings/hist");c.subscribe(_p+"settings/dmpTs")})}else{if(c){try{c.end(true)}catch(e){}}go()}});
 // Force cache bust v2.1 - clear old cached calibration data
 (function(){var cv=localStorage.getItem("cv_"+id);if(cv!=="2.1"){localStorage.removeItem("cal_"+id);localStorage.setItem("cv_"+id,"2.1")}})();
 </script></body></html>
