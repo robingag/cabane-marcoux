@@ -53,6 +53,11 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cd .vl{font-family:'Courier New',monospace;font-size:28px;font-weight:700;text-align:center;line-height:1;letter-spacing:-1px}
 .cd.dm .vl{color:#f59e0b;text-shadow:0 0 16px rgba(245,158,11,.25)}
 .cd.tp .vl{color:#38bdf8;text-shadow:0 0 16px rgba(56,189,248,.25)}
+@keyframes dmpPulse{0%{box-shadow:none;border-top-color:#f59e0b;background:#0c1018}20%{box-shadow:0 0 0 4px rgba(56,189,248,.2),0 0 18px rgba(56,189,248,.15);border-top-color:#38bdf8;background:#091520}70%{box-shadow:0 0 0 2px rgba(56,189,248,.08);border-top-color:#38bdf8;background:#091520}100%{box-shadow:none;border-top-color:#f59e0b;background:#0c1018}}
+.cd.dm.dmp-anim{animation:dmpPulse 1.5s ease-out forwards}
+@keyframes dmpDrop{0%{opacity:0;transform:scale(.5) translateY(-8px)}25%{opacity:1;transform:scale(1.2) translateY(0)}60%{opacity:.85;transform:scale(1) translateY(4px)}100%{opacity:0;transform:scale(.9) translateY(12px)}}
+.dmp-ico{position:absolute;top:8px;right:10px;font-size:18px;pointer-events:none;opacity:0}
+.dmp-ico.dmp-anim{animation:dmpDrop 1.5s ease-out forwards}
 /* GRAPH */
 .gc{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #3b82f6;border-radius:4px;padding:10px 10px 8px;margin-bottom:16px}
 .gc .gl{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -160,7 +165,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <div class="w">
   <div class="sec"><span>Mesures temps r&#233;el</span></div>
   <div class="r">
-    <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div></div>
+    <div class="cd dm" id="dmp-card"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div><span class="dmp-ico" id="dmp-ico">&#128167;</span></div>
     <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div><div style="color:#38bdf8;font-size:.75rem;opacity:.7;text-align:right;margin-top:2px" id="hum"></div></div>
   </div>
   <div class="sec"><span>Tendance dompeur</span></div>
@@ -264,7 +269,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260405a";
+var APP_VERSION="20260405b";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -470,7 +475,8 @@ var dmpElapsed=0,dmpTimer=null,idleTimer=null,lastDmpTs=0;
 (function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}else if(hist.length>0){hist=[];localStorage.removeItem("hist_"+id)}}catch(e){}})();
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=Date.now();try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
-function od(v){document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
+function triggerDmpAnim(){var cd=document.getElementById("dmp-card"),ic=document.getElementById("dmp-ico");cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim");void cd.offsetWidth;cd.classList.add("dmp-anim");ic.classList.add("dmp-anim");setTimeout(function(){cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim")},1550)}
+function od(v){triggerDmpAnim();document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
