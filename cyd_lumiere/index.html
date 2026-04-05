@@ -141,6 +141,13 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 /* STATUS BAR */
 .sb{background:#060810;border:1px solid #111a26;border-radius:4px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:'Courier New',monospace;font-size:10px;color:#4a6080}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:#4a6080;margin-right:8px;display:inline-block;vertical-align:middle}
+/* HISTORIQUE GALLONS */
+.hist-tile{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #f59e0b;border-radius:4px;padding:8px 12px;margin-bottom:16px}
+.hist-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0d1520}
+.hist-row:last-child{border-bottom:none}
+.hist-date{color:#94a3b8;font-family:'Courier New',monospace;font-size:11px}
+.hist-gal{color:#f59e0b;font-family:'Courier New',monospace;font-size:13px;font-weight:700}
+.hist-empty{color:#4a6080;font-size:11px;text-align:center;padding:10px 0;letter-spacing:1px;text-transform:uppercase}
 </style></head><body>
 <div class="hd">
   <div class="hd-left">
@@ -168,7 +175,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <div class="cd dm" id="dmp-card"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div><span class="dmp-ico" id="dmp-ico">&#128167;</span></div>
     <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div><div style="color:#38bdf8;font-size:.75rem;opacity:.7;text-align:right;margin-top:2px" id="hum"></div></div>
   </div>
-  <div class="sec"><span>Tendance dompeur</span></div>
+  <div class="sec"><span>Tendance dompeur &mdash; <span id="gal-today-lbl" style="color:#22c55e;font-size:9px;letter-spacing:1px;text-transform:none">0 gal aujourd'hui</span></span></div>
   <div class="gc" style="position:relative">
     <div class="gl"></div>
     <canvas id="gr" height="90"></canvas>
@@ -197,6 +204,8 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <span><span class="sb-dot" id="sb-dot"></span><span id="st">Connexion...</span></span>
     <span>ID&nbsp;<span id="did">---</span></span>
   </div>
+  <div class="sec" style="margin-top:8px"><span>Historique journalier</span></div>
+  <div class="hist-tile" id="gal-hist-tile"><div class="hist-empty">Aucun historique</div></div>
 </div>
 <div class="pin-ov" id="pino">
   <div class="pin-box">
@@ -269,11 +278,12 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260405c";
+var APP_VERSION="20260405d";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
 var c,id=_sp.get("id")||"5ea48c",hist=[];
+var galToday=0,galDate="",galLog=[];
 // Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
 (function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
 (function(){try{var s=localStorage.getItem("hist_"+id);if(s){hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}catch(e){}})();
@@ -395,6 +405,14 @@ function syncDepthUI(){}
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
 function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=4;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
+function getTodayStr(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()<9?"0":"")+(d.getMonth()+1)+"-"+(d.getDate()<10?"0":"")+d.getDate()}
+function getDateLabel(str){var months=["jan","f\u00e9v","mars","avr","mai","juin","juil","ao\u00fbt","sept","oct","nov","d\u00e9c"];var p=str.split("-");if(p.length!==3)return str;var m=parseInt(p[1])-1,day=parseInt(p[2]);return day+" "+months[m]}
+function checkDayRollover(){var today=getTodayStr();if(galDate&&galDate!==today){if(galToday>0){galLog.unshift({date:galDate,gal:galToday});if(galLog.length>30)galLog=galLog.slice(0,30);saveGalLog()}galToday=0}galDate=today;saveGal()}
+function addGallons(n){galToday+=n;saveGal();updGalDisplay()}
+function saveGal(){try{localStorage.setItem("gal_"+id,JSON.stringify({date:galDate,gal:galToday}))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/galToday",JSON.stringify({date:galDate,gal:galToday}),{retain:true})}
+function saveGalLog(){try{localStorage.setItem("galLog_"+id,JSON.stringify(galLog))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/galHist",JSON.stringify(galLog),{retain:true});renderGalHist()}
+function updGalDisplay(){document.getElementById("gal-today-lbl").textContent=galToday+" gal aujourd'hui"}
+function renderGalHist(){var el=document.getElementById("gal-hist-tile");if(!galLog.length){el.innerHTML='<div class="hist-empty">Aucun historique<\/div>';return}var html="";for(var i=0;i<Math.min(galLog.length,14);i++){var r=galLog[i];html+='<div class="hist-row"><span class="hist-date">'+getDateLabel(r.date)+'<\/span><span class="hist-gal">'+r.gal+' gal<\/span><\/div>'}el.innerHTML=html}
 function dg(){
   var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
   cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
@@ -480,7 +498,7 @@ var dmpElapsed=0,dmpTimer=null,idleTimer=null,lastDmpTs=0;
 function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=Date.now();try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
 function triggerDmpAnim(){var cd=document.getElementById("dmp-card"),ic=document.getElementById("dmp-ico");cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim");void cd.offsetWidth;cd.classList.add("dmp-anim");ic.classList.add("dmp-anim");setTimeout(function(){cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim")},1550)}
-function od(v){triggerDmpAnim();document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
+function od(v){checkDayRollover();addGallons(3);triggerDmpAnim();document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
@@ -508,7 +526,7 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","dompeur/live","live","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","settings/galToday","settings/galHist","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
     });
     c.on("message",function(tp,m,packet){
@@ -528,8 +546,10 @@ function go(){
       if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);localStorage.setItem("bmax_"+id,v);for(var i=1;i<=4;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
       if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
+      if(tp===p+"settings/galToday"){try{var gobj=JSON.parse(v);if(gobj&&gobj.date){var today2=getTodayStr();if(gobj.date===today2&&gobj.gal>galToday){galToday=gobj.gal;galDate=today2;try{localStorage.setItem("gal_"+id,v)}catch(e2){}updGalDisplay()}}}catch(e){}}
+      if(tp===p+"settings/galHist"){try{var galH=JSON.parse(v);if(galH.length>galLog.length){galLog=galH;try{localStorage.setItem("galLog_"+id,v)}catch(e2){}renderGalHist()}}catch(e){}}
       if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);var ts=0,val=null;if(typeof obj==="number"&&obj>0){ts=obj}else if(obj&&obj.ts>0){ts=obj.ts;val=obj.val}if(ts>0){var ago=Math.floor((Date.now()-ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=ts;try{localStorage.setItem("dmpTs_"+id,String(ts))}catch(e2){}if(val){try{localStorage.setItem("dmpVal_"+id,val)}catch(e2){}document.getElementById("dmp").textContent=val}if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=ago;var em=Math.floor(ago/60),es=ago%60;document.getElementById("dmp-elapsed").textContent=(em<10?"0":"")+em+":"+(es<10?"0":"")+es;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}catch(e){}}
-      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
+      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true});c.publish(p+"settings/galToday",JSON.stringify({date:galDate,gal:galToday}),{retain:true});if(galLog.length>0)c.publish(p+"settings/galHist",JSON.stringify(galLog),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
       if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
     });
@@ -560,6 +580,8 @@ function pollHub(){
   }).catch(function(){});
 }
 if(hubUrl){setInterval(pollHub,500)}
+(function(){try{var g=localStorage.getItem("galLog_"+id);if(g){galLog=JSON.parse(g);if(galLog.length>30)galLog=galLog.slice(0,30)}}catch(e){}})();
+(function(){try{var g=localStorage.getItem("gal_"+id);if(g){var obj=JSON.parse(g);var today=getTodayStr();if(obj.date===today){galToday=obj.gal||0;galDate=obj.date}else if(obj.date&&obj.gal>0){galLog.unshift({date:obj.date,gal:obj.gal});if(galLog.length>30)galLog=galLog.slice(0,30);try{localStorage.setItem("galLog_"+id,JSON.stringify(galLog))}catch(e2){}galToday=0;galDate=today}else{galDate=getTodayStr()}}else{galDate=getTodayStr()}}catch(e){galDate=getTodayStr()}updGalDisplay();renderGalHist()})();
 slInit();loadBasinNames();document.getElementById("alarm-chk").checked=alarmOn;go();dg();
 window.addEventListener("resize",dg);
 document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(c&&c.connected){var p="cyd/"+id+"/";c.unsubscribe([p+"settings/hist",p+"settings/dmpTs"],function(){c.subscribe(p+"settings/hist");c.subscribe(p+"settings/dmpTs")})}else{go()}});
