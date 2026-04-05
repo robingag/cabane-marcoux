@@ -264,7 +264,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260404g";
+var APP_VERSION="20260405a";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -500,8 +500,6 @@ function go(){
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
       ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
-      c.publish(p+"settings/dmpTs","",{retain:true});
-      c.publish(p+"settings/hist","",{retain:true});
     });
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
@@ -520,13 +518,13 @@ function go(){
       if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);localStorage.setItem("bmax_"+id,v);for(var i=1;i<=4;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
       if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
-      if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
+      if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);var ts=0,val=null;if(typeof obj==="number"&&obj>0){ts=obj}else if(obj&&obj.ts>0){ts=obj.ts;val=obj.val}if(ts>0){var ago=Math.floor((Date.now()-ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=ts;try{localStorage.setItem("dmpTs_"+id,String(ts))}catch(e2){}if(val){try{localStorage.setItem("dmpVal_"+id,val)}catch(e2){}document.getElementById("dmp").textContent=val}if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=ago;var em=Math.floor(ago/60),es=ago%60;document.getElementById("dmp-elapsed").textContent=(em<10?"0":"")+em+":"+(es<10?"0":"")+es;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}catch(e){}}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
       if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
-    c.on("close",function(){ss("Reconnexion...","w");setTimeout(tc,3000)});
+    c.on("close",function(){ss("Reconnexion...","w")});
   }tc();
 }
 // Local polling: fetch /api from Hub every 500ms for live updates
@@ -554,7 +552,7 @@ function pollHub(){
 if(hubUrl){setInterval(pollHub,500)}
 slInit();loadBasinNames();document.getElementById("alarm-chk").checked=alarmOn;go();dg();
 window.addEventListener("resize",dg);
-document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
+document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(c&&c.connected){var p="cyd/"+id+"/";c.unsubscribe([p+"settings/hist",p+"settings/dmpTs"],function(){c.subscribe(p+"settings/hist");c.subscribe(p+"settings/dmpTs")})}else{go()}});
 // Force cache bust v2.1 - clear old cached calibration data
 (function(){var cv=localStorage.getItem("cv_"+id);if(cv!=="2.1"){localStorage.removeItem("cal_"+id);localStorage.setItem("cv_"+id,"2.1")}})();
 </script></body></html>
