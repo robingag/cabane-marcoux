@@ -282,7 +282,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260406a";
+var APP_VERSION="20260406b";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -365,7 +365,7 @@ function chkPin(){
     if(pinMode==="vac")resetSlider();
   }
 }
-function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("calo").className="cal-ov show"}
+function openCal(){updateCalDisplay();document.getElementById("calo").className="cal-ov show"}
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
@@ -405,10 +405,10 @@ function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).va
 function sv(on){vacOn=on;updSlider()}
 function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}if(n===4){var mk=document.getElementById("b4min");if(mk&&basinMax[4]>0){var mp=22/basinMax[4];if(mp<=1){mk.style.display="block";mk.style.bottom=(mp*100)+"%";mk.style.top="auto"}else{mk.style.display="none"}}}}
-function syncDepthUI(){}
+
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
 function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=4;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
-function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
+function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
 function getTodayStr(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()<9?"0":"")+(d.getMonth()+1)+"-"+(d.getDate()<10?"0":"")+d.getDate()}
 function getDateLabel(str){var months=["jan","f\u00e9v","mars","avr","mai","juin","juil","ao\u00fbt","sept","oct","nov","d\u00e9c"];var p=str.split("-");if(p.length!==3)return str;var m=parseInt(p[1])-1,day=parseInt(p[2]);return day+" "+months[m]}
 function checkDayRollover(){var today=getTodayStr();if(galDate&&galDate!==today){if(galToday>0){galLog.unshift({date:galDate,gal:galToday});if(galLog.length>30)galLog=galLog.slice(0,30);saveGalLog()}galToday=0}galDate=today;saveGal()}
@@ -545,7 +545,7 @@ function go(){
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi)sba(bi,v)}
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi+"/raw"){rawBasin[bi]=parseInt(v)||0;sba(bi,basinPct[bi]);if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}}
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi+"/cal"){try{calData[bi]=JSON.parse(v);saveCal();sba(bi,basinPct[bi]);if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}}
-      if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}syncDepthUI();for(var i=1;i<=4;i++)sba(i,basinPct[i])}
+      if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}for(var i=1;i<=4;i++)sba(i,basinPct[i])}
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);localStorage.setItem("bmax_"+id,v);for(var i=1;i<=4;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
@@ -561,34 +561,9 @@ function go(){
     c.on("close",function(){ss("Reconnexion...","w");setTimeout(tc,3000)});
   }tc();
 }
-// Local polling: fetch /api from Hub every 500ms for live updates
-// Auto-detect: if served from Hub IP, use relative /api. Otherwise try stored IP.
-var hubUrl="";
-if(location.hostname.match(/^192\.168\./)||location.hostname.match(/^10\./)||location.hostname.match(/^172\./)){
-  hubUrl="/api";
-}else{
-  var hubIp=localStorage.getItem("hubIp_"+id)||"";
-  if(hubIp)hubUrl="http://"+hubIp+"/api";
-}
-function pollHub(){
-  if(!hubUrl)return;
-  fetch(hubUrl,{mode:"cors"}).then(function(r){return r.json()}).then(function(d){
-    rawBasin[1]=Math.round(d.r1)||0;rawBasin[2]=Math.round(d.r2)||0;rawBasin[3]=Math.round(d.r3)||0;
-    sba(1,d.b1);sba(2,d.b2);sba(3,d.b3);
-    curTemp=String(d.t);curHum=d.h;updTH();
-    sv(d.vac===1);
-    document.getElementById("dmp").textContent=d.dmp;
-    if(document.getElementById("calo").classList.contains("show"))updateCalDisplay();
-    syncDepthUI();
-    ss("Live","ok");
-  }).catch(function(){});
-}
-if(hubUrl){setInterval(pollHub,500)}
 (function(){try{var g=localStorage.getItem("galLog_"+id);if(g){galLog=JSON.parse(g);if(galLog.length>30)galLog=galLog.slice(0,30)}}catch(e){}})();
 (function(){try{var g=localStorage.getItem("gal_"+id);if(g){var obj=JSON.parse(g);var today=getTodayStr();if(obj.date===today){galToday=obj.gal||0;galDate=obj.date}else if(obj.date&&obj.gal>0){galLog.unshift({date:obj.date,gal:obj.gal});if(galLog.length>30)galLog=galLog.slice(0,30);try{localStorage.setItem("galLog_"+id,JSON.stringify(galLog))}catch(e2){}galToday=0;galDate=today}else{galDate=getTodayStr()}}else{galDate=getTodayStr()}}catch(e){galDate=getTodayStr()}updGalDisplay();renderGalHist()})();
 slInit();loadBasinNames();document.getElementById("alarm-chk").checked=alarmOn;go();dg();
 window.addEventListener("resize",function(){dg()});
 document.addEventListener("visibilitychange",function(){if(document.hidden)return;try{var _hs=localStorage.getItem("hist_"+id);if(_hs){var _hh=JSON.parse(_hs);if(_hh.length>0){hist=_hh;if(hist.length>30)hist=hist.slice(-30)}}}catch(e){}dg();if(c&&c.connected){var _p="cyd/"+id+"/";c.unsubscribe([_p+"settings/hist",_p+"settings/dmpTs"],function(){c.subscribe(_p+"settings/hist");c.subscribe(_p+"settings/dmpTs")})}else{if(c){try{c.end(true)}catch(e){}}go()}});
-// Force cache bust v2.1 - clear old cached calibration data
-(function(){var cv=localStorage.getItem("cv_"+id);if(cv!=="2.1"){localStorage.removeItem("cal_"+id);localStorage.setItem("cv_"+id,"2.1")}})();
 </script></body></html>
