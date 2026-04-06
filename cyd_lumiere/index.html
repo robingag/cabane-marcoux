@@ -558,7 +558,7 @@ function go(){
       if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
-    c.on("close",function(){ss("Reconnexion...","w")});
+    c.on("close",function(){ss("Reconnexion...","w");setTimeout(tc,3000)});
   }tc();
 }
 // Local polling: fetch /api from Hub every 500ms for live updates
