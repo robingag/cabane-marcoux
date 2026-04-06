@@ -230,46 +230,50 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <div class="cal-ttl">Calibration Bassins</div>
     <div class="cal-basin" id="calB1">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 1</span></div>
       <div class="cal-info" id="calInfo1">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(1)">Lecture</button>
         <input class="cal-input" id="calIn1" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
+      <div style="margin-top:5px"><span class="cal-raw" id="rawB1">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax1" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(1)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB2">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname2" value="B2" onchange="saveBasinName(2)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 2</span></div>
       <div class="cal-info" id="calInfo2">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(2)">Lecture</button>
         <input class="cal-input" id="calIn2" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
+      <div style="margin-top:5px"><span class="cal-raw" id="rawB2">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax2" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(2)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB3">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname3" value="B3" onchange="saveBasinName(3)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 3</span></div>
       <div class="cal-info" id="calInfo3">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(3)">Lecture</button>
         <input class="cal-input" id="calIn3" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
+      <div style="margin-top:5px"><span class="cal-raw" id="rawB3">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax3" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(3)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB4">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname4" value="B4" onchange="saveBasinName(4)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 4</span><span class="cal-raw" id="rawB4">Brut: --</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 4</span></div>
       <div class="cal-info" id="calInfo4">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(4)">Lecture</button>
         <input class="cal-input" id="calIn4" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
+      <div style="margin-top:5px"><span class="cal-raw" id="rawB4">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax4" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(4)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <button class="cal-close" onclick="closeCal()">Fermer</button>
@@ -278,7 +282,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260405h";
+var APP_VERSION="20260406a";
 var _sp=new URLSearchParams(window.location.search);
 // Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
 (function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
@@ -365,8 +369,8 @@ function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("cal
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
-    var raw=Math.round(rawBasin[n]),rawIn=Math.round(raw/2.54);
-    document.getElementById("rawB"+n).textContent="Brut: "+rawIn+" po ("+raw+" cm)";
+    var raw=Math.round(rawBasin[n]),rawIn=(raw/2.54).toFixed(1);
+    document.getElementById("rawB"+n).textContent="Raw actuel : "+rawIn+" po";
     var cal=calData[n];
     if(cal&&cal.refRaw!=null&&cal.refInches!=null){
       document.getElementById("calInfo"+n).textContent="Ref: "+cal.refInches+" po @ "+cal.refRaw+" cm";
