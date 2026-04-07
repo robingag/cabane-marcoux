@@ -395,7 +395,7 @@ function dg(){
   cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
   var W=cv.offsetWidth,H=90;
   ctx.clearRect(0,0,W,H);ctx.fillStyle="#060810";ctx.fillRect(0,0,W,H);
-  if(hist.length<2){
+  if(hist.length<2||(lastDmpTs>0&&Date.now()-lastDmpTs>900000)){
     ctx.fillStyle="#f59e0b";ctx.font="bold 18px system-ui";ctx.textAlign="center";
     ctx.fillText("En attente de la prochaine coul\u00e9e!",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
