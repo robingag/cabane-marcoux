@@ -500,8 +500,6 @@ function go(){
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
       ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
-      c.publish(p+"settings/dmpTs","",{retain:true});
-      c.publish(p+"settings/hist","",{retain:true});
     });
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
