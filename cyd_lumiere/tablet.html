@@ -88,8 +88,7 @@ function upB(n,pct){
   f.className="fill "+(pct>=90?"h":pct>=61?"m":"l");
   var b=document.getElementById("b"+n);
   var po=rawToInches(n,rawBasin[n]);
-  var alertOn=(n===4)?(po!==null&&po<22):(pct>=90);
-  if(alertOn)b.classList.add("alert");else b.classList.remove("alert");
+  if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
   var v=document.getElementById("v"+n),u=document.getElementById("u"+n);
   if(po!==null&&po>=0){v.textContent=Math.round(po);u.textContent="po";}
   else{v.textContent="--";u.textContent="";}
