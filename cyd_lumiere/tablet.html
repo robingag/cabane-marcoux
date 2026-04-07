@@ -68,7 +68,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
 <script>
 var id="5ea48c",p="cyd/"+id+"/";
 var rawBasin={1:0,2:0,3:0,4:0},calData={},basinMax={1:42,2:23,3:42,4:34};
-var dmpElapsed=0,dmpTimer=null;
+var dmpElapsed=0,dmpTimer=null,dmpWatchdog=null;
 
 setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
@@ -87,8 +87,8 @@ function upB(n,pct){
   f.style.height=pct+"%";
   f.className="fill "+(pct>=90?"h":pct>=61?"m":"l");
   var b=document.getElementById("b"+n);
-  if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
   var po=rawToInches(n,rawBasin[n]);
+  if(pct>=90)b.classList.add("alert");else b.classList.remove("alert");
   var v=document.getElementById("v"+n),u=document.getElementById("u"+n);
   if(po!==null&&po>=0){v.textContent=Math.round(po);u.textContent="po";}
   else{v.textContent="--";u.textContent="";}
@@ -104,7 +104,7 @@ function refresh(n){
 var c=mqtt.connect("wss://broker.hivemq.com:8884/mqtt",{clientId:"tab-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,reconnectPeriod:5000});
 c.on("connect",function(){
   document.getElementById("dot").classList.add("ok");
-  ["basin1","basin2","basin3","basin4","basin1/raw","basin2/raw","basin3/raw","basin4/raw",
+  ["basin1/raw","basin2/raw","basin3/raw","basin4/raw",
    "basin1/cal","basin2/cal","basin3/cal","basin4/cal",
    "temp","dompeur","dompeur/live","settings/bmax"].forEach(function(t){c.subscribe(p+t);});
 });
@@ -119,6 +119,8 @@ c.on("message",function(tp,m){
       dmpElapsed=parseInt(pp[0])*60+parseInt(pp[1]);
       document.getElementById("el").textContent=v;
       if(!dmpTimer)dmpTimer=setInterval(function(){dmpElapsed++;document.getElementById("el").textContent=fmt(dmpElapsed);},1000);
+      if(dmpWatchdog)clearTimeout(dmpWatchdog);
+      dmpWatchdog=setTimeout(function(){clearInterval(dmpTimer);dmpTimer=null;document.getElementById("el").textContent="--:--";},5000);
     }
   }
   if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
