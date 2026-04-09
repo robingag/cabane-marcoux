@@ -53,11 +53,6 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cd .vl{font-family:'Courier New',monospace;font-size:28px;font-weight:700;text-align:center;line-height:1;letter-spacing:-1px}
 .cd.dm .vl{color:#f59e0b;text-shadow:0 0 16px rgba(245,158,11,.25)}
 .cd.tp .vl{color:#38bdf8;text-shadow:0 0 16px rgba(56,189,248,.25)}
-@keyframes dmpPulse{0%{box-shadow:none;border-top-color:#f59e0b;background:#0c1018}20%{box-shadow:0 0 0 4px rgba(56,189,248,.2),0 0 18px rgba(56,189,248,.15);border-top-color:#38bdf8;background:#091520}70%{box-shadow:0 0 0 2px rgba(56,189,248,.08);border-top-color:#38bdf8;background:#091520}100%{box-shadow:none;border-top-color:#f59e0b;background:#0c1018}}
-.cd.dm.dmp-anim{animation:dmpPulse 1.5s ease-out forwards}
-@keyframes dmpDrop{0%{opacity:0;transform:scale(.5) translateY(-8px)}25%{opacity:1;transform:scale(1.2) translateY(0)}60%{opacity:.85;transform:scale(1) translateY(4px)}100%{opacity:0;transform:scale(.9) translateY(12px)}}
-.dmp-ico{position:absolute;top:8px;right:10px;font-size:18px;pointer-events:none;opacity:0}
-.dmp-ico.dmp-anim{animation:dmpDrop 1.5s ease-out forwards}
 /* GRAPH */
 .gc{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #3b82f6;border-radius:4px;padding:10px 10px 8px;margin-bottom:16px}
 .gc .gl{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
@@ -138,16 +133,13 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cal-max{width:70px}
 .cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;margin-top:6px;transition:all .2s}
 .cal-close:active{border-color:#1e2d40;color:#475569}
+/* UNIT TOGGLE */
+.unit-toggle{display:flex;gap:4px;justify-content:center;margin-bottom:14px}
+.unit-btn{flex:1;padding:8px 0;border:1px solid #1a2332;border-radius:4px;background:none;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:all .2s}
+.unit-btn.active{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-color:#f59e0b}
 /* STATUS BAR */
 .sb{background:#060810;border:1px solid #111a26;border-radius:4px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:'Courier New',monospace;font-size:10px;color:#4a6080}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:#4a6080;margin-right:8px;display:inline-block;vertical-align:middle}
-/* HISTORIQUE GALLONS */
-.hist-tile{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #f59e0b;border-radius:4px;padding:8px 12px;margin-bottom:16px}
-.hist-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0d1520}
-.hist-row:last-child{border-bottom:none}
-.hist-date{color:#94a3b8;font-family:'Courier New',monospace;font-size:11px}
-.hist-gal{color:#f59e0b;font-family:'Courier New',monospace;font-size:13px;font-weight:700}
-.hist-empty{color:#4a6080;font-size:11px;text-align:center;padding:10px 0;letter-spacing:1px;text-transform:uppercase}
 </style></head><body>
 <div class="hd">
   <div class="hd-left">
@@ -166,16 +158,16 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
   <div class="mn-item" onclick="testAlarm()" style="cursor:pointer;justify-content:center"><span style="font-size:13px">&#128264; Test Alarme</span></div>
   <div style="border-top:1px solid #1e2d40;margin:8px 0"></div>
   <div class="mn-title" style="font-size:10px">Acc&#232;s Remote</div>
-  <div class="mn-qr"><div id="qrimg"></div></div>
+  <div class="mn-qr"><img id="qrimg" src="" alt="QR"></div>
   <div class="mn-url" id="qrurl"></div>
 </div>
 <div class="w">
   <div class="sec"><span>Mesures temps r&#233;el</span></div>
   <div class="r">
-    <div class="cd dm" id="dmp-card"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div><span class="dmp-ico" id="dmp-ico">&#128167;</span></div>
+    <div class="cd dm"><div class="lb">Dompeur</div><div class="vl" id="dmp">--:--</div><div style="color:#22c55e;font-size:.9rem;margin-top:2px" id="dmp-elapsed">00:00</div></div>
     <div class="cd tp"><div class="lb">Temp / Humid</div><div class="vl" id="tmp">--.-&#176;C</div><div style="color:#38bdf8;font-size:.75rem;opacity:.7;text-align:right;margin-top:2px" id="hum"></div></div>
   </div>
-  <div class="sec"><span>Tendance dompeur &mdash; <span id="gal-today-lbl" style="color:#22c55e;font-size:9px;letter-spacing:1px;text-transform:none">0 gal aujourd'hui</span></span></div>
+  <div class="sec"><span>Tendance dompeur</span></div>
   <div class="gc" style="position:relative">
     <div class="gl"></div>
     <canvas id="gr" height="90"></canvas>
@@ -188,7 +180,7 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <div class="tank"><span class="nl">B1</span><div class="tw"><div class="tf" id="bf1"></div></div><span class="pc" id="bp1">--%</span></div>
       <div class="tank"><span class="nl">B2</span><div class="tw"><div class="tf" id="bf2"></div></div><span class="pc" id="bp2">--%</span></div>
       <div class="tank"><span class="nl">B3</span><div class="tw"><div class="tf" id="bf3"></div></div><span class="pc" id="bp3">--%</span></div>
-      <div class="tank"><span class="nl">B4</span><div class="tw"><div class="tf" id="bf4"></div><div id="b4min" style="position:absolute;left:0;right:0;height:2px;background:#ef4444;box-shadow:0 0 4px rgba(239,68,68,.8);pointer-events:none;display:none"></div></div><span class="pc" id="bp4">--%</span></div>
+      <div class="tank"><span class="nl">B4</span><div class="tw"><div class="tf" id="bf4"></div></div><span class="pc" id="bp4">--%</span></div>
     </div>
   </div>
   <div class="sec"><span>Contr&#244;le vacuum</span></div>
@@ -204,8 +196,6 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
     <span><span class="sb-dot" id="sb-dot"></span><span id="st">Connexion...</span></span>
     <span>ID&nbsp;<span id="did">---</span></span>
   </div>
-  <div class="sec" style="margin-top:8px"><span>Historique journalier</span></div>
-  <div class="hist-tile" id="gal-hist-tile"><div class="hist-empty">Aucun historique</div></div>
 </div>
 <div class="pin-ov" id="pino">
   <div class="pin-box">
@@ -228,76 +218,70 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 <div class="cal-ov" id="calo">
   <div class="cal-box">
     <div class="cal-ttl">Calibration Bassins</div>
+    <div class="unit-toggle">
+      <button id="unit-pct" onclick="setUnit('pct')" class="unit-btn active">%</button>
+      <button id="unit-in" onclick="setUnit('in')" class="unit-btn">Pouces</button>
+    </div>
     <div class="cal-basin" id="calB1">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 1</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
       <div class="cal-info" id="calInfo1">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(1)">Lecture</button>
         <input class="cal-input" id="calIn1" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
-      <div style="margin-top:5px"><span class="cal-raw" id="rawB1">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax1" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(1)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB2">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname2" value="B2" onchange="saveBasinName(2)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 2</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
       <div class="cal-info" id="calInfo2">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(2)">Lecture</button>
         <input class="cal-input" id="calIn2" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
-      <div style="margin-top:5px"><span class="cal-raw" id="rawB2">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax2" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(2)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB3">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname3" value="B3" onchange="saveBasinName(3)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 3</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
       <div class="cal-info" id="calInfo3">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(3)">Lecture</button>
         <input class="cal-input" id="calIn3" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
-      <div style="margin-top:5px"><span class="cal-raw" id="rawB3">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax3" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(3)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <div class="cal-basin" id="calB4">
       <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname4" value="B4" onchange="saveBasinName(4)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 4</span></div>
+      <div class="cal-header"><span class="cal-name">Bassin 4</span><span class="cal-raw" id="rawB4">Brut: --</span></div>
       <div class="cal-info" id="calInfo4">Ref: --</div>
       <div class="cal-ref-row">
         <button class="cal-btn cal-read" onclick="captureRef(4)">Lecture</button>
         <input class="cal-input" id="calIn4" type="number" placeholder="po" inputmode="numeric">
         <span style="color:#64748b;font-size:10px">po</span>
       </div>
-      <div style="margin-top:5px"><span class="cal-raw" id="rawB4">Raw actuel : --</span></div>
       <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax4" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(4)"><span style="color:#64748b;font-size:10px">po</span></div>
     </div>
     <button class="cal-close" onclick="closeCal()">Fermer</button>
   </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var APP_VERSION="20260406b";
-var _sp=new URLSearchParams(window.location.search);
-// Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
-(function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
-var c,id=_sp.get("id")||"5ea48c",hist=[];
-var galToday=0,galDate="",galLog=[];
-// Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
-(function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
-(function(){try{var s=localStorage.getItem("hist_"+id);if(s){hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}catch(e){}})();
+var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+function todayStr(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()<9?"0":"")+(d.getMonth()+1)+"-"+(d.getDate()<10?"0":"")+d.getDate()}
+(function(){try{var s=localStorage.getItem("hist_"+id);if(s){var hd=localStorage.getItem("histDate_"+id)||"";if(hd!==todayStr()){hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("histDate_"+id)}else{hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}}catch(e){}})();
 var vacOn=false,pinCode="",pendingState=null,slDrag=false,slStartX=0;
+var wroomDmpSynced=false;
 var pinMode="vac",CAL_PIN="123",VAC_PIN="777";
 var rawBasin={1:0,2:0,3:0,4:0};
 var calData={1:{refRaw:null,refInches:null},2:{refRaw:null,refInches:null},3:{refRaw:null,refInches:null},4:{refRaw:null,refInches:null}};
 document.getElementById("did").textContent=id;
 (function(){try{var s=localStorage.getItem("cal_"+id);if(s)calData=JSON.parse(s)}catch(e){}})();
-var basinUnit="in",basinPct={1:0,2:0,3:0,4:0};
+var basinUnit="pct",basinPct={1:0,2:0,3:0,4:0};
 var basinMax={1:0,2:0,3:0,4:0};
 var curTemp="--.-",curHum=0;
 var basinNames={1:"B1",2:"B2",3:"B3",4:"B4"};
@@ -365,12 +349,12 @@ function chkPin(){
     if(pinMode==="vac")resetSlider();
   }
 }
-function openCal(){updateCalDisplay();document.getElementById("calo").className="cal-ov show"}
+function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("calo").className="cal-ov show"}
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
-    var raw=Math.round(rawBasin[n]),rawIn=(raw/2.54).toFixed(1);
-    document.getElementById("rawB"+n).textContent="Raw actuel : "+rawIn+" po";
+    var raw=rawBasin[n],rawIn=(raw/2.54).toFixed(1);
+    document.getElementById("rawB"+n).textContent="Brut: "+rawIn+" po ("+raw+" cm)";
     var cal=calData[n];
     if(cal&&cal.refRaw!=null&&cal.refInches!=null){
       document.getElementById("calInfo"+n).textContent="Ref: "+cal.refInches+" po @ "+cal.refRaw+" cm";
@@ -398,25 +382,17 @@ function rawToInches(n,currentRaw){
   if(!cal||cal.refRaw==null||cal.refInches==null)return null;
   var deltaRaw=cal.refRaw-currentRaw;
   var deltaInches=deltaRaw/2.54;
-  return Math.round(cal.refInches+deltaInches);
+  return Math.round((cal.refInches+deltaInches)*10)/10;
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
 function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).value)||0;basinMax[n]=v;try{localStorage.setItem("bmax_"+id,JSON.stringify(basinMax))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bmax",JSON.stringify(basinMax),{retain:true});sba(n,basinPct[n])}
 function sv(on){vacOn=on;updSlider()}
 function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
-function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}if(n===4){var mk=document.getElementById("b4min");if(mk&&basinMax[4]>0){var mp=22/basinMax[4];if(mp<=1){mk.style.display="block";mk.style.bottom=(mp*100)+"%";mk.style.top="auto"}else{mk.style.display="none"}}}}
-
+function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}}
+function syncDepthUI(){document.getElementById("unit-pct").className="unit-btn"+(basinUnit==="pct"?" active":"");document.getElementById("unit-in").className="unit-btn"+(basinUnit==="in"?" active":"")}
 function saveBasinName(n){var v=document.getElementById("bname"+n).value.trim()||"B"+n;basinNames[n]=v;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=v;try{localStorage.setItem("bnames_"+id,JSON.stringify(basinNames))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bnames",JSON.stringify(basinNames),{retain:true})}
 function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basinNames=JSON.parse(s)}catch(e){}for(var n=1;n<=4;n++){document.getElementById("bname"+n).value=basinNames[n]||"B"+n;document.querySelector("#bf"+n).closest(".tank").querySelector(".nl").textContent=basinNames[n]||"B"+n}}
-function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
-function getTodayStr(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()<9?"0":"")+(d.getMonth()+1)+"-"+(d.getDate()<10?"0":"")+d.getDate()}
-function getDateLabel(str){var months=["jan","f\u00e9v","mars","avr","mai","juin","juil","ao\u00fbt","sept","oct","nov","d\u00e9c"];var p=str.split("-");if(p.length!==3)return str;var m=parseInt(p[1])-1,day=parseInt(p[2]);return day+" "+months[m]}
-function checkDayRollover(){var today=getTodayStr();if(galDate&&galDate!==today){if(galToday>0){galLog.unshift({date:galDate,gal:galToday});if(galLog.length>30)galLog=galLog.slice(0,30);saveGalLog()}galToday=0}galDate=today;saveGal()}
-function addGallons(n){galToday+=n;saveGal();updGalDisplay()}
-function saveGal(){try{localStorage.setItem("gal_"+id,JSON.stringify({date:galDate,gal:galToday}))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/galToday",JSON.stringify({date:galDate,gal:galToday}),{retain:true})}
-function saveGalLog(){try{localStorage.setItem("galLog_"+id,JSON.stringify(galLog))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/galHist",JSON.stringify(galLog),{retain:true});renderGalHist()}
-function updGalDisplay(){document.getElementById("gal-today-lbl").textContent=galToday+" gal aujourd'hui"}
-function renderGalHist(){var el=document.getElementById("gal-hist-tile");if(!galLog.length){el.innerHTML='<div class="hist-empty">Aucun historique<\/div>';return}var html="";for(var i=0;i<Math.min(galLog.length,14);i++){var r=galLog[i];html+='<div class="hist-row"><span class="hist-date">'+getDateLabel(r.date)+'<\/span><span class="hist-gal">'+r.gal+' gal<\/span><\/div>'}el.innerHTML=html}
+function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
 function dg(){
   var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
   cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
@@ -427,28 +403,24 @@ function dg(){
     ctx.fillText("En attente de la prochaine coul\u00e9e!",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
   }
-  var MAX=300,n=hist.length;
-  var pad={l:32,r:8,t:8,b:14},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
+  if(rg<10){mn-=5;mx+=5;rg=mx-mn}
+  var p={l:32,r:8,t:8,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;
   ctx.strokeStyle="#111a26";ctx.setLineDash([2,5]);
-  for(var i=0;i<=2;i++){var gy=pad.t+ch*i/2;ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+cw,gy);ctx.stroke()}
+  for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
   ctx.setLineDash([]);
   ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
-  ctx.fillText("0s",pad.l-4,pad.t+7);ctx.fillText("5m",pad.l-4,pad.t+ch+4);
-  var pts=[];
-  for(var i=0;i<n;i++){var s=Math.min(hist[i],MAX);pts.push({x:pad.l+i*cw/(n-1),y:pad.t+s/MAX*ch})}
-  ctx.lineWidth=1.5;ctx.lineJoin="round";ctx.strokeStyle="#22c55e";
-  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  ctx.fillText(mn+"s",p.l-4,p.t+7);ctx.fillText(mx+"s",p.l-4,p.t+ch+4);
+  ctx.lineWidth=1.5;ctx.lineJoin="round";
   for(var i=1;i<n;i++){
-    var q0=pts[i>1?i-2:0],q1=pts[i-1],q2=pts[i],q3=pts[i<n-1?i+1:i];
-    var t=0.4;
-    var cp1x=q1.x+(q2.x-q0.x)*t/3,cp1y=q1.y+(q2.y-q0.y)*t/3;
-    var cp2x=q2.x-(q3.x-q1.x)*t/3,cp2y=q2.y-(q3.y-q1.y)*t/3;
-    ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,q2.x,q2.y);
+    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+(hist[i]-mn)*ch/rg;
+    ctx.strokeStyle=hist[i]<=hist[i-1]?"#22c55e":"#ef4444";
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
-  ctx.stroke();
+  var a=document.getElementById("ar");
   updateMeo();
 }
-function updateMeo(){var a=document.getElementById("ar");if(!meoOn){a.textContent="";a.style.color="";return}var _p2=basinMax[2]>0?Math.round(rawToInches(2,rawBasin[2])/basinMax[2]*100):100,_p3=basinMax[3]>0?Math.round(rawToInches(3,rawBasin[3])/basinMax[3]*100):100;if(_p2<20&&_p3<20){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.style.color="#ef4444";return}if(hist.length>0&&hist[hist.length-1]<80){var po1=rawToInches(1,rawBasin[1]),po2=rawToInches(2,rawBasin[2]);if(po1!==null&&po1>20&&po2!==null&&po2>12){a.textContent="Chauffe M\u00e9o on a de l'eau!";a.style.color="#22c55e";return}a.textContent="Ca coule en Fou!";a.style.color="#22c55e";return}a.textContent="";a.style.color=""}
+function updateMeo(){var a=document.getElementById("ar");if(!meoOn||hist.length<4){a.textContent="";a.style.color="";return}var r=hist.slice(-3),o=hist.slice(-6,-3);if(o.length<2)o=hist.slice(0,-3);if(o.length<1){a.textContent="";a.style.color="";return}var avgR=r.reduce(function(s,v){return s+v},0)/r.length;var avgO=o.reduce(function(s,v){return s+v},0)/o.length;var diff=(avgR-avgO)/avgO*100;if(diff>10){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.style.color="#ef4444"}else if(diff<-10){a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.style.color="#22c55e"}else{a.textContent="";a.style.color=""}}
 var meoOn=true;
 var alarmOn=true,alarmPlaying=false,alarmAudio=null,alarmInterval=null;
 (function(){try{var a=localStorage.getItem("alarm_"+id);if(a!==null){alarmOn=a==="1"}}catch(e){}})();
@@ -498,11 +470,10 @@ function tgMeoFromMenu(){meoOn=document.getElementById("meo-chk").checked;syncMe
 function setMeo(v){meoOn=v;syncMeoUI();updateMeo();if(c&&c.connected)c.publish("cyd/"+id+"/settings/meo",v?"1":"0",{retain:true})}
 function syncMeoUI(){document.getElementById("meo-chk").checked=meoOn}
 var dmpElapsed=0,dmpTimer=null,idleTimer=null,lastDmpTs=0;
-(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}}catch(e){}})();
-function startDmpTimer(){if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=Date.now();try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
+(function(){try{var t=localStorage.getItem("dmpTs_"+id);if(t){lastDmpTs=parseInt(t);var ago=Math.floor((Date.now()-lastDmpTs)/1000);if(ago>0&&ago<1800){dmpElapsed=ago;var m=Math.floor(ago/60),s=ago%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}else{hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}var lv=localStorage.getItem("dmpVal_"+id);if(lv)document.getElementById("dmp").textContent=lv}else if(hist.length>0){hist=[];localStorage.removeItem("hist_"+id)}}catch(e){}})();
+function startDmpTimer(){var now=Date.now();if(dmpTimer&&lastDmpTs>0&&(now-lastDmpTs)<60000){lastDmpTs=now;try{localStorage.setItem("dmpTs_"+id,String(now))}catch(e){}return;}if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=0;lastDmpTs=now;try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}if(alarmPlaying)stopAlarm();dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}
 function resetIdleTimer(){if(idleTimer)clearTimeout(idleTimer);idleTimer=setTimeout(function(){hist=[];try{localStorage.removeItem("hist_"+id);localStorage.removeItem("dmpTs_"+id);localStorage.removeItem("dmpVal_"+id)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist","[]",{retain:true});dg();document.getElementById("dmp").textContent="--:--";document.getElementById("dmp-elapsed").textContent="00:00";if(dmpTimer){clearInterval(dmpTimer);dmpTimer=null}},1800000)}
-function triggerDmpAnim(){var cd=document.getElementById("dmp-card"),ic=document.getElementById("dmp-ico");cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim");void cd.offsetWidth;cd.classList.add("dmp-anim");ic.classList.add("dmp-anim");setTimeout(function(){cd.classList.remove("dmp-anim");ic.classList.remove("dmp-anim")},1550)}
-function od(v){checkDayRollover();addGallons(3);triggerDmpAnim();document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj)}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
+function od(v){document.getElementById("dmp").textContent=v;try{localStorage.setItem("dmpVal_"+id,v)}catch(e){}startDmpTimer();resetIdleTimer();if(c&&c.connected)c.publish("cyd/"+id+"/settings/dmpTs",JSON.stringify({ts:Date.now(),val:v}),{retain:true});var p=v.split(":");if(p.length===2){var s=parseInt(p[0])*60+parseInt(p[1]);if(s>0){hist.push(s);if(hist.length>30)hist.shift();var hj=JSON.stringify(hist);try{localStorage.setItem("hist_"+id,hj);localStorage.setItem("histDate_"+id,todayStr())}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/hist",hj,{retain:true});dg()}}}
 function ss(t,cl){
   document.getElementById("st").textContent=t;
   document.getElementById("dt").className="dt "+cl;
@@ -513,10 +484,9 @@ function ss(t,cl){
 function tgMenu(){
   var p=document.getElementById("mnp");var open=p.classList.toggle("open");
   if(open&&!p.dataset.loaded){
-    var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?v="+APP_VERSION+"&id="+id;
+    var url="https://robingag.github.io/cabane-marcoux/cyd_lumiere/index.html?id="+id;
     document.getElementById("qrurl").textContent=url;
-    var qd=document.getElementById("qrimg");qd.innerHTML="";
-    new QRCode(qd,{text:url,width:160,height:160,colorDark:"#000000",colorLight:"#ffffff"});
+    document.getElementById("qrimg").src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&format=png&data="+encodeURIComponent(url);
     p.dataset.loaded="1";
   }
 }
@@ -525,45 +495,39 @@ function go(){
   var urls=["wss://broker.hivemq.com:8884/mqtt","ws://broker.hivemq.com:8000/mqtt"];var ui=0;
   function tc(){
     if(ui>=urls.length)ui=0;
-    c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:5000,keepalive:30});
+    c=mqtt.connect(urls[ui],{clientId:"r-"+id+"-"+Math.random().toString(16).substr(2,4),clean:true,connectTimeout:8000,reconnectPeriod:0});
     c.on("connect",function(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
-      ["state","dompeur","dompeur/live","live","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
+      ["state","dompeur","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","settings/galToday","settings/galHist","alarm","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","alarm"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
+      c.publish(p+"settings/dmpTs","",{retain:true});
+      c.publish(p+"settings/hist","",{retain:true});
     });
     c.on("message",function(tp,m,packet){
       var v=m.toString(),p="cyd/"+id+"/";
       if(tp===p+"state")sv(v==="1");
-      if(tp===p+"dompeur"){if(packet&&packet.retain){document.getElementById("dmp").textContent=v}else if(v!==document.getElementById("dmp").textContent){od(v)}}
-      if(tp===p+"dompeur/live"){var pp=v.split(":");if(pp.length===2){dmpElapsed=parseInt(pp[0])*60+parseInt(pp[1]);lastDmpTs=Date.now()-dmpElapsed*1000;try{localStorage.setItem("dmpTs_"+id,String(lastDmpTs))}catch(e){}document.getElementById("dmp-elapsed").textContent=v;if(!dmpTimer)dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}
-      // Live topic: b1%|b2%|b3%|raw1|raw2|raw3|temp|hum — always delivered
-      if(tp===p+"live"){var pp=v.split("|");if(pp.length>=8){sba(1,pp[0]);sba(2,pp[1]);sba(3,pp[2]);rawBasin[1]=parseInt(pp[3])||0;rawBasin[2]=parseInt(pp[4])||0;rawBasin[3]=parseInt(pp[5])||0;curTemp=pp[6];curHum=parseFloat(pp[7])||0;updTH();if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}}
+      if(tp===p+"dompeur"){if(!packet||!packet.retain){wroomDmpSynced=true;od(v)}}
       if(tp===p+"temp"){curTemp=v;updTH()}
       if(tp===p+"humidity"){curHum=parseFloat(v)||0;updTH()}
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi)sba(bi,v)}
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi+"/raw"){rawBasin[bi]=parseInt(v)||0;sba(bi,basinPct[bi]);if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}}
       for(var bi=1;bi<=4;bi++){if(tp===p+"basin"+bi+"/cal"){try{calData[bi]=JSON.parse(v);saveCal();sba(bi,basinPct[bi]);if(document.getElementById("calo").classList.contains("show"))updateCalDisplay()}catch(e){}}}
-      if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}for(var i=1;i<=4;i++)sba(i,basinPct[i])}
+      if(tp===p+"settings/unit"){basinUnit=v;try{localStorage.setItem("unit_"+id,v)}catch(e){}syncDepthUI();for(var i=1;i<=4;i++)sba(i,basinPct[i])}
       if(tp===p+"settings/meo"){meoOn=v==="1";syncMeoUI();updateMeo()}
       if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);localStorage.setItem("bmax_"+id,v);for(var i=1;i<=4;i++)sba(i,basinPct[i])}catch(e){}}
       if(tp===p+"settings/bnames"){try{basinNames=JSON.parse(v);localStorage.setItem("bnames_"+id,v);for(var i=1;i<=4;i++){document.getElementById("bname"+i).value=basinNames[i]||"B"+i;document.querySelector("#bf"+i).closest(".tank").querySelector(".nl").textContent=basinNames[i]||"B"+i}}catch(e){}}
-      if(tp===p+"settings/hist"){try{var h=JSON.parse(v);if(Array.isArray(h)){hist=h;try{localStorage.setItem("hist_"+id,JSON.stringify(h))}catch(e){}dg()}}catch(e){}}
-      if(tp===p+"settings/galToday"){try{var gobj=JSON.parse(v);if(gobj&&gobj.date){var today2=getTodayStr();if(gobj.date===today2){galToday=gobj.gal;galDate=today2;try{localStorage.setItem("gal_"+id,v)}catch(e2){}updGalDisplay()}}}catch(e){}}
-      if(tp===p+"settings/galHist"){try{var galH=JSON.parse(v);if(Array.isArray(galH)){galLog=galH;try{localStorage.setItem("galLog_"+id,v)}catch(e2){}renderGalHist()}}catch(e){}}
-      if(tp===p+"settings/dmpTs"){try{var obj=JSON.parse(v);var ts=0,val=null;if(typeof obj==="number"&&obj>0){ts=obj}else if(obj&&obj.ts>0){ts=obj.ts;val=obj.val}if(ts>0){var ago=Math.floor((Date.now()-ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=ts;try{localStorage.setItem("dmpTs_"+id,String(ts))}catch(e2){}if(val){try{localStorage.setItem("dmpVal_"+id,val)}catch(e2){}document.getElementById("dmp").textContent=val}if(dmpTimer)clearInterval(dmpTimer);dmpElapsed=ago;var em=Math.floor(ago/60),es=ago%60;document.getElementById("dmp-elapsed").textContent=(em<10?"0":"")+em+":"+(es<10?"0":"")+es;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}catch(e){}}
-      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true});c.publish(p+"settings/galToday",JSON.stringify({date:galDate,gal:galToday}),{retain:true});if(galLog.length>0)c.publish(p+"settings/galHist",JSON.stringify(galLog),{retain:true})}
+      if(tp===p+"settings/hist"&&!(packet&&packet.retain)){try{var h=JSON.parse(v);if(h.length>0){hist=h;try{localStorage.setItem("hist_"+id,v)}catch(e){}dg()}}catch(e){}}
+      if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;localStorage.setItem("dmpTs_"+id,String(obj.ts));if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpElapsed=ago;dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s;checkDmpAlarm()},1000)}}}}catch(e){}}
+      if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true})}
       if(tp===p+"alarm"&&v==="test"&&alarmOn){playAlarm();setTimeout(stopAlarm,5000)}
-      if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
-    c.on("close",function(){ss("Reconnexion...","w");setTimeout(tc,3000)});
+    c.on("close",function(){ss("Deconnecte","er")});
   }tc();
 }
-(function(){try{var g=localStorage.getItem("galLog_"+id);if(g){galLog=JSON.parse(g);if(galLog.length>30)galLog=galLog.slice(0,30)}}catch(e){}})();
-(function(){try{var g=localStorage.getItem("gal_"+id);if(g){var obj=JSON.parse(g);var today=getTodayStr();if(obj.date===today){galToday=obj.gal||0;galDate=obj.date}else if(obj.date&&obj.gal>0){galLog.unshift({date:obj.date,gal:obj.gal});if(galLog.length>30)galLog=galLog.slice(0,30);try{localStorage.setItem("galLog_"+id,JSON.stringify(galLog))}catch(e2){}galToday=0;galDate=today}else{galDate=getTodayStr()}}else{galDate=getTodayStr()}}catch(e){galDate=getTodayStr()}updGalDisplay();renderGalHist()})();
 slInit();loadBasinNames();document.getElementById("alarm-chk").checked=alarmOn;go();dg();
-window.addEventListener("resize",function(){dg()});
-document.addEventListener("visibilitychange",function(){if(document.hidden)return;try{var _hs=localStorage.getItem("hist_"+id);if(_hs){var _hh=JSON.parse(_hs);if(_hh.length>0){hist=_hh;if(hist.length>30)hist=hist.slice(-30)}}}catch(e){}dg();if(c&&c.connected){var _p="cyd/"+id+"/";c.unsubscribe([_p+"settings/hist",_p+"settings/dmpTs"],function(){c.subscribe(_p+"settings/hist");c.subscribe(_p+"settings/dmpTs")})}else{if(c){try{c.end(true)}catch(e){}}go()}});
+window.addEventListener("resize",dg);
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&(!c||!c.connected))go()});
 </script></body></html>
