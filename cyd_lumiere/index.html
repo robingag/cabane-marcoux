@@ -284,7 +284,13 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
 <script>
-var c,id=new URLSearchParams(window.location.search).get("id")||"5ea48c",hist=[];
+var APP_VERSION="20260409a";
+var _sp=new URLSearchParams(window.location.search);
+// Force cache-bust: si le ?v= ne correspond pas à la version, redirect immédiat avec la bonne version
+(function(){var pv=_sp.get("v");if(pv&&pv!==APP_VERSION){var u=location.href.split("?")[0];window.location.replace(u+"?v="+APP_VERSION+"&id="+(_sp.get("id")||"5ea48c"))}})();
+// Auto-refresh: every 60s, fetch fresh copy bypassing all caches, reload if version changed
+(function(){setInterval(function(){var u=location.href.split("?")[0];fetch(u+"?_nocache="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}}).then(function(r){return r.text()}).then(function(t){var m=t.match(/APP_VERSION="([^"]+)"/);if(m&&m[1]!==APP_VERSION){window.location.replace(u+"?v="+m[1]+"&id="+id)}}).catch(function(){})},60000)})();
+var c,id=_sp.get("id")||"5ea48c",hist=[];
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()<9?"0":"")+(d.getMonth()+1)+"-"+(d.getDate()<10?"0":"")+d.getDate()}
 (function(){try{var s=localStorage.getItem("hist_"+id);if(s){var hd=localStorage.getItem("histDate_"+id)||"";if(hd!==todayStr()){hist=[];localStorage.removeItem("hist_"+id);localStorage.removeItem("histDate_"+id)}else{hist=JSON.parse(s);if(hist.length>30)hist=hist.slice(-30)}}}catch(e){}})();
 var vacOn=false,pinCode="",pendingState=null,slDrag=false,slStartX=0;
@@ -475,7 +481,7 @@ function go(){
       ss("Connecte","ok");var p="cyd/"+id+"/";
       ["state","dompeur","temp","humidity","basin1","basin2","basin3","basin4"].forEach(function(t){c.subscribe(p+t)});
       ["basin1/raw","basin2/raw","basin3/raw","basin4/raw","basin1/cal","basin2/cal","basin3/cal","basin4/cal"].forEach(function(t){c.subscribe(p+t)});
-      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","settings/galToday","settings/galHist"].forEach(function(t){c.subscribe(p+t)});
+      ["settings/unit","settings/meo","settings/bnames","settings/bmax","settings/hist","settings/sync","settings/dmpTs","settings/galToday","settings/galHist","cmd/reload"].forEach(function(t){c.subscribe(p+t)});
       c.publish(p+"settings/sync","req");
       c.publish(p+"settings/dmpTs","",{retain:true});
       c.publish(p+"settings/hist","",{retain:true});
@@ -497,6 +503,7 @@ function go(){
       if(tp===p+"settings/dmpTs"&&!(packet&&packet.retain)){try{var obj=JSON.parse(v);if(obj.ts>0){var ago=Math.floor((Date.now()-obj.ts)/1000);if(ago>=0&&ago<1800){lastDmpTs=obj.ts;try{localStorage.setItem("dmpMsg_"+id,String(obj.ts))}catch(e){}if(obj.val)localStorage.setItem("dmpVal_"+id,obj.val);if(obj.val)document.getElementById("dmp").textContent=obj.val;if(!dmpTimer){dmpCycleStart=obj.ts;dmpElapsed=ago;try{localStorage.setItem("dmpTs_"+id,String(obj.ts))}catch(e){}dmpTimer=setInterval(function(){dmpElapsed++;var m=Math.floor(dmpElapsed/60),s=dmpElapsed%60;document.getElementById("dmp-elapsed").textContent=(m<10?"0":"")+m+":"+(s<10?"0":"")+s},1000)}}}}catch(e){}}
       if(tp===p+"settings/galToday"){try{var gobj=JSON.parse(v);if(gobj&&gobj.date){var today2=todayStr();if(gobj.date===today2){var inGal=gobj.gal||0;if(packet&&packet.retain&&galDate===today2&&galToday>=inGal)return;if(inGal!==galToday||!galDate){galToday=inGal;galDate=today2;try{localStorage.setItem("gal_"+id,JSON.stringify({date:today2,gal:inGal}))}catch(e2){}updGalDisplay()}}}}catch(e){}}
       if(tp===p+"settings/galHist"){try{var galH=JSON.parse(v);if(Array.isArray(galH)){galLog=galH;try{localStorage.setItem("galLog_"+id,v)}catch(e2){}renderGalHist()}}catch(e){}}
+      if(tp===p+"cmd/reload"&&v!==APP_VERSION){location.reload(true)}
       if(tp===p+"settings/sync"&&v==="req"){c.publish(p+"settings/unit",basinUnit,{retain:true});c.publish(p+"settings/meo",meoOn?"1":"0",{retain:true});c.publish(p+"settings/bnames",JSON.stringify(basinNames),{retain:true});if(hist.length>0)c.publish(p+"settings/hist",JSON.stringify(hist),{retain:true});c.publish(p+"settings/galToday",JSON.stringify({date:galDate,gal:galToday}),{retain:true});if(galLog.length>0)c.publish(p+"settings/galHist",JSON.stringify(galLog),{retain:true})}
     });
     c.on("error",function(){ss("Reconnexion...","w");c.end(true);ui++;setTimeout(tc,1000)});
