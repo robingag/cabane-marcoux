@@ -412,8 +412,7 @@ function loadBasinNames(){try{var s=localStorage.getItem("bnames_"+id);if(s)basi
 function setUnit(u){basinUnit=u;try{localStorage.setItem("unit_"+id,u)}catch(e){}syncDepthUI();for(var n=1;n<=4;n++)sba(n,basinPct[n]);if(c&&c.connected)c.publish("cyd/"+id+"/settings/unit",u,{retain:true})}
 function dg(){
   var cv=document.getElementById("gr"),ctx=cv.getContext("2d"),dp=window.devicePixelRatio||1;
-  cv.width=cv.offsetWidth*dp;cv.height=90*dp;ctx.scale(dp,dp);
-  var W=cv.offsetWidth,H=90;
+  var W=cv.offsetWidth,H=90;cv.width=W*dp;cv.height=H*dp;ctx.scale(dp,dp);
   ctx.clearRect(0,0,W,H);ctx.fillStyle="#060810";ctx.fillRect(0,0,W,H);
   if(hist.length<2){
     ctx.fillStyle="#f59e0b";ctx.font="bold 18px system-ui";ctx.textAlign="center";
@@ -426,14 +425,12 @@ function dg(){
   for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
   ctx.setLineDash([]);
   ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
-  ctx.fillText("5min",p.l-4,p.t+7);ctx.fillText("0",p.l-4,p.t+ch+4);
-  ctx.lineWidth=1.5;ctx.lineJoin="round";
-  for(var i=1;i<n;i++){
-    var x1=p.l+(i-1)*cw/(n-1),y1=p.t+(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+(hist[i]-mn)*ch/rg;
-    ctx.strokeStyle=hist[i]<=hist[i-1]?"#22c55e":"#ef4444";
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-  }
-  var a=document.getElementById("ar");
+  ctx.fillText("0",p.l-4,p.t+7);ctx.fillText("5min",p.l-4,p.t+ch+4);
+  var pts=[];for(var i=0;i<n;i++)pts.push({x:p.l+i*cw/(n-1),y:p.t+(hist[i]-mn)*ch/rg});
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  for(var i=1;i<n-1;i++){var mx2=(pts[i].x+pts[i+1].x)/2,my2=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,mx2,my2)}
+  ctx.lineTo(pts[n-1].x,pts[n-1].y);
+  ctx.strokeStyle="#22c55e";ctx.lineWidth=2;ctx.lineJoin="round";ctx.stroke();
   updateMeo();
 }
 function updateMeo(){var a=document.getElementById("ar");if(!meoOn||hist.length<4){a.textContent="";a.style.color="";return}var r=hist.slice(-3),o=hist.slice(-6,-3);if(o.length<2)o=hist.slice(0,-3);if(o.length<1){a.textContent="";a.style.color="";return}var avgR=r.reduce(function(s,v){return s+v},0)/r.length;var avgO=o.reduce(function(s,v){return s+v},0)/o.length;var diff=(avgR-avgO)/avgO*100;if(diff>10){a.textContent="Slaque M\u00e9o on va manquer d'eau!";a.style.color="#ef4444"}else if(diff<-10){a.textContent="Chauffe M\u00e9o \u00e7a coule en fou!";a.style.color="#22c55e"}else{a.textContent="";a.style.color=""}}
