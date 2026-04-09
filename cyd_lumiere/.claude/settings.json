@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"/c/Users/ryb086/OneDrive - Groupe R.Y. Beaudoin/Bureau/CLAUDE_CODE\" && git add -A && git diff --cached --quiet 2>/dev/null || git commit -m \"backup: auto $(date +%Y%m%d_%H%M%S)\" 2>/dev/null || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
