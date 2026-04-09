@@ -420,14 +420,13 @@ function dg(){
     ctx.fillText("En attente de la prochaine coul\u00e9e!",W/2,H/2+4);
     document.getElementById("ar").textContent="";return;
   }
-  var n=hist.length,mn=Math.min.apply(null,hist),mx=Math.max.apply(null,hist),rg=mx-mn;
-  if(rg<10){mn-=5;mx+=5;rg=mx-mn}
+  var n=hist.length,mn=0,mx=300,rg=300;
   var p={l:32,r:8,t:8,b:14},cw=W-p.l-p.r,ch=H-p.t-p.b;
   ctx.strokeStyle="#111a26";ctx.setLineDash([2,5]);
   for(var i=0;i<=2;i++){var y=p.t+ch*i/2;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(p.l+cw,y);ctx.stroke()}
   ctx.setLineDash([]);
   ctx.fillStyle="#4a6080";ctx.font="8px 'Courier New'";ctx.textAlign="right";
-  ctx.fillText(mn+"s",p.l-4,p.t+7);ctx.fillText(mx+"s",p.l-4,p.t+ch+4);
+  ctx.fillText("5min",p.l-4,p.t+7);ctx.fillText("0",p.l-4,p.t+ch+4);
   ctx.lineWidth=1.5;ctx.lineJoin="round";
   for(var i=1;i<n;i++){
     var x1=p.l+(i-1)*cw/(n-1),y1=p.t+(hist[i-1]-mn)*ch/rg,x2=p.l+i*cw/(n-1),y2=p.t+(hist[i]-mn)*ch/rg;
