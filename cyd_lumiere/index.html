@@ -118,26 +118,31 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
 .cal-ov.show{display:flex}
 .cal-box{background:#0c1018;border:1px solid #1a2332;border-top:2px solid #3b82f6;border-radius:6px;padding:24px 20px;width:320px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.9)}
 .cal-ttl{font-size:8px;color:#3b82f6;text-transform:uppercase;letter-spacing:3px;margin-bottom:18px;text-align:center}
-.cal-basin{background:#080a0e;border:1px solid #131c28;border-radius:4px;padding:12px;margin-bottom:10px}
-.cal-namerow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.cal-nameinput{background:#080a0e;border:1px solid #1e2d40;border-radius:4px;color:#e2e8f0;font-size:13px;padding:4px 8px;width:100px;outline:none;font-family:inherit}
+.cal-basin{background:#080a0e;border:1px solid #131c28;border-radius:4px;padding:10px 12px;margin-bottom:8px}
+.cal-brow{display:flex;align-items:center;gap:8px}
+.cal-nameinput{background:#080a0e;border:1px solid #1e2d40;border-radius:4px;color:#e2e8f0;font-size:12px;padding:3px 7px;width:70px;outline:none;font-family:inherit;flex-shrink:0}
 .cal-nameinput:focus{border-color:#3b82f6}
-.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.cal-name{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px}
-.cal-raw{font-family:'Courier New',monospace;font-size:12px;color:#f59e0b}
-.cal-info{font-family:'Courier New',monospace;font-size:10px;color:#4a6080;margin-bottom:8px}
-.cal-ref-row{display:flex;align-items:center;gap:8px}
-.cal-btn{padding:10px 14px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;color:#fff;text-transform:uppercase;letter-spacing:1px;transition:all .15s}
-.cal-read{background:linear-gradient(135deg,#1e40af,#2563eb);flex-shrink:0}
+.cal-cur{font-family:'Courier New',monospace;font-size:13px;color:#f59e0b;flex:1;text-align:center}
+.cal-read{background:linear-gradient(135deg,#1e40af,#2563eb);border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:600;padding:8px 12px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;flex-shrink:0}
 .cal-read:active{background:#1e3a8a}
-.cal-btn.done{opacity:.5}
-.cal-input{background:#080a0e;border:1px solid #1e2d40;border-radius:4px;color:#22c55e;font-family:'Courier New',monospace;font-size:14px;padding:8px 10px;width:70px;outline:none;text-align:center}
-.cal-input:focus{border-color:#3b82f6}
-.cal-input::placeholder{color:#2a3a50}
-.cal-max-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #131c28}
-.cal-max{width:70px}
-.cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;margin-top:6px;transition:all .2s}
+.cal-save-btn{width:100%;background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:4px;color:#fff;font-size:12px;font-weight:700;padding:12px;cursor:pointer;text-transform:uppercase;letter-spacing:2px;margin-top:6px;margin-bottom:6px;transition:all .2s}
+.cal-save-btn:active{background:#14532d}
+.cal-close{background:none;border:1px solid #1a2332;color:#64748b;font-size:10px;padding:10px;border-radius:4px;cursor:pointer;width:100%;letter-spacing:2px;text-transform:uppercase;transition:all .2s}
 .cal-close:active{border-color:#1e2d40;color:#475569}
+/* WIZARD CALIBRATION */
+.calwiz-ov{display:none;position:fixed;inset:0;background:rgba(4,6,10,.96);z-index:300;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.calwiz-ov.show{display:flex}
+.calwiz-box{background:#0c1018;border:1px solid #22c55e;border-top:3px solid #22c55e;border-radius:6px;padding:28px 24px;width:300px;box-shadow:0 24px 64px rgba(0,0,0,.95),0 0 24px rgba(34,197,94,.08)}
+.calwiz-ttl{font-size:9px;color:#22c55e;text-transform:uppercase;letter-spacing:3px;margin-bottom:20px;text-align:center}
+.calwiz-reading{font-family:'Courier New',monospace;font-size:15px;color:#f59e0b;text-align:center;margin-bottom:16px;padding:10px;background:#060810;border-radius:4px;border:1px solid #131c28}
+.calwiz-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.calwiz-input{width:100%;background:#060810;border:1px solid #1e2d40;border-radius:4px;color:#22c55e;font-family:'Courier New',monospace;font-size:22px;padding:12px;outline:none;text-align:center;margin-bottom:18px;display:block}
+.calwiz-input:focus{border-color:#22c55e}
+.calwiz-btns{display:flex;gap:8px}
+.calwiz-cancel{flex:1;background:none;border:1px solid #1a2332;color:#64748b;font-size:11px;padding:12px;border-radius:4px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .2s}
+.calwiz-cancel:active{border-color:#1e2d40}
+.calwiz-ok{flex:1;background:linear-gradient(135deg,#166534,#16a34a);border:none;border-radius:4px;color:#fff;font-size:12px;font-weight:700;padding:12px;cursor:pointer;text-transform:uppercase;letter-spacing:1px}
+.calwiz-ok:active{background:#14532d}
 /* HISTORIQUE GALLONS */
 .hist-tile{background:#0c1018;border:1px solid #1a2332;border-left:3px solid #f59e0b;border-radius:4px;padding:8px 12px;margin-bottom:16px}
 .hist-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0d1520}
@@ -235,51 +240,35 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#080a0e;color:
       <button id="unit-pct" onclick="setUnit('pct')" class="unit-btn active">%</button>
       <button id="unit-in" onclick="setUnit('in')" class="unit-btn">Pouces</button>
     </div>
-    <div class="cal-basin" id="calB1">
-      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 1</span><span class="cal-raw" id="rawB1">Brut: --</span></div>
-      <div class="cal-info" id="calInfo1">Ref: --</div>
-      <div class="cal-ref-row">
-        <button class="cal-btn cal-read" onclick="captureRef(1)">Lecture</button>
-        <input class="cal-input" id="calIn1" type="number" placeholder="po" inputmode="numeric">
-        <span style="color:#64748b;font-size:10px">po</span>
-      </div>
-      <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax1" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(1)"><span style="color:#64748b;font-size:10px">po</span></div>
-    </div>
-    <div class="cal-basin" id="calB2">
-      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname2" value="B2" onchange="saveBasinName(2)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 2</span><span class="cal-raw" id="rawB2">Brut: --</span></div>
-      <div class="cal-info" id="calInfo2">Ref: --</div>
-      <div class="cal-ref-row">
-        <button class="cal-btn cal-read" onclick="captureRef(2)">Lecture</button>
-        <input class="cal-input" id="calIn2" type="number" placeholder="po" inputmode="numeric">
-        <span style="color:#64748b;font-size:10px">po</span>
-      </div>
-      <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax2" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(2)"><span style="color:#64748b;font-size:10px">po</span></div>
-    </div>
-    <div class="cal-basin" id="calB3">
-      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname3" value="B3" onchange="saveBasinName(3)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 3</span><span class="cal-raw" id="rawB3">Brut: --</span></div>
-      <div class="cal-info" id="calInfo3">Ref: --</div>
-      <div class="cal-ref-row">
-        <button class="cal-btn cal-read" onclick="captureRef(3)">Lecture</button>
-        <input class="cal-input" id="calIn3" type="number" placeholder="po" inputmode="numeric">
-        <span style="color:#64748b;font-size:10px">po</span>
-      </div>
-      <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax3" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(3)"><span style="color:#64748b;font-size:10px">po</span></div>
-    </div>
-    <div class="cal-basin" id="calB4">
-      <div class="cal-namerow"><span style="color:#64748b;font-size:10px">Nom:</span><input class="cal-nameinput" id="bname4" value="B4" onchange="saveBasinName(4)" maxlength="10" spellcheck="false"></div>
-      <div class="cal-header"><span class="cal-name">Bassin 4</span><span class="cal-raw" id="rawB4">Brut: --</span></div>
-      <div class="cal-info" id="calInfo4">Ref: --</div>
-      <div class="cal-ref-row">
-        <button class="cal-btn cal-read" onclick="captureRef(4)">Lecture</button>
-        <input class="cal-input" id="calIn4" type="number" placeholder="po" inputmode="numeric">
-        <span style="color:#64748b;font-size:10px">po</span>
-      </div>
-      <div class="cal-max-row"><span style="color:#64748b;font-size:10px">Max:</span><input class="cal-input cal-max" id="calMax4" type="number" placeholder="po" inputmode="numeric" onchange="saveMaxDepth(4)"><span style="color:#64748b;font-size:10px">po</span></div>
-    </div>
+    <div class="cal-basin" id="calB1"><div class="cal-brow"><input class="cal-nameinput" id="bname1" value="B1" onchange="saveBasinName(1)" maxlength="10" spellcheck="false"><span class="cal-cur" id="calCur1">-- po</span><button class="cal-read" onclick="startCal(1)">Lecture</button></div></div>
+    <div class="cal-basin" id="calB2"><div class="cal-brow"><input class="cal-nameinput" id="bname2" value="B2" onchange="saveBasinName(2)" maxlength="10" spellcheck="false"><span class="cal-cur" id="calCur2">-- po</span><button class="cal-read" onclick="startCal(2)">Lecture</button></div></div>
+    <div class="cal-basin" id="calB3"><div class="cal-brow"><input class="cal-nameinput" id="bname3" value="B3" onchange="saveBasinName(3)" maxlength="10" spellcheck="false"><span class="cal-cur" id="calCur3">-- po</span><button class="cal-read" onclick="startCal(3)">Lecture</button></div></div>
+    <div class="cal-basin" id="calB4"><div class="cal-brow"><input class="cal-nameinput" id="bname4" value="B4" onchange="saveBasinName(4)" maxlength="10" spellcheck="false"><span class="cal-cur" id="calCur4">-- po</span><button class="cal-read" onclick="startCal(4)">Lecture</button></div></div>
+    <button class="cal-save-btn" onclick="saveToWROOM()">&#128190; Sauvegarder dans WROOM</button>
     <button class="cal-close" onclick="closeCal()">Fermer</button>
+  </div>
+</div>
+<div class="calwiz-ov" id="calwizo">
+  <div class="calwiz-box">
+    <div class="calwiz-ttl" id="calwiz-ttl">Calibration</div>
+    <div id="calwiz-step1">
+      <div class="calwiz-reading" id="calwiz-reading">Lecture&nbsp;: -- po</div>
+      <div class="calwiz-label">Niveau r&#233;el (pouces)&nbsp;:</div>
+      <input class="calwiz-input" id="calwiz-input" type="number" inputmode="decimal" placeholder="0.0">
+      <div class="calwiz-btns">
+        <button class="calwiz-cancel" onclick="calWizCancel()">Annuler</button>
+        <button class="calwiz-ok" onclick="calWizStep2()">OK</button>
+      </div>
+    </div>
+    <div id="calwiz-step2" style="display:none">
+      <div class="calwiz-reading" id="calwiz-maxlbl">Max actuel&nbsp;: -- po</div>
+      <div class="calwiz-label">Nouveau max (pouces)&nbsp;:</div>
+      <input class="calwiz-input" id="calwiz-maxinput" type="number" inputmode="decimal" placeholder="max">
+      <div class="calwiz-btns">
+        <button class="calwiz-cancel" onclick="calWizKeepMax()">Garder</button>
+        <button class="calwiz-ok" onclick="calWizSaveMax()">Changer</button>
+      </div>
+    </div>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
@@ -371,33 +360,58 @@ function chkPin(){
     if(pinMode==="vac")resetSlider();
   }
 }
+var calWizBasin=0,calWizRefRaw=0,calWizRefInches=0;
 function openCal(){updateCalDisplay();syncDepthUI();document.getElementById("calo").className="cal-ov show"}
 function closeCal(){document.getElementById("calo").className="cal-ov"}
 function updateCalDisplay(){
   for(var n=1;n<=4;n++){
-    var raw=rawBasin[n],rawIn=(raw/2.54).toFixed(1);
-    document.getElementById("rawB"+n).textContent="Brut: "+rawIn+" po ("+raw+" cm)";
-    var cal=calData[n];
-    if(cal&&cal.refRaw!=null&&cal.refInches!=null){
-      document.getElementById("calInfo"+n).textContent="Ref: "+cal.refInches+" po @ "+cal.refRaw+" cm";
-      document.getElementById("calIn"+n).value=cal.refInches;
-    }else{
-      document.getElementById("calInfo"+n).textContent="Ref: --";
-    }
-    if(basinMax[n]>0)document.getElementById("calMax"+n).value=basinMax[n];
+    var po=rawToInches(n,rawBasin[n]);
+    var rawIn=(rawBasin[n]/2.54).toFixed(1);
+    document.getElementById("calCur"+n).textContent=po!==null?po+" po":rawIn+" po (brut)";
   }
 }
-function captureRef(n){
-  var raw=rawBasin[n];
-  var inVal=parseFloat(document.getElementById("calIn"+n).value);
-  if(isNaN(inVal)){document.getElementById("calIn"+n).focus();return}
-  calData[n]={refRaw:raw,refInches:inVal};
-  saveCal();
-  updateCalDisplay();
-  if(c&&c.connected)c.publish("cyd/"+id+"/basin"+n+"/cal",JSON.stringify(calData[n]),{retain:true});
-  sba(n,basinPct[n]);
-  var btn=document.querySelector("#calB"+n+" .cal-read");
-  btn.classList.add("done");setTimeout(function(){btn.classList.remove("done")},1500);
+function startCal(n){
+  calWizBasin=n;calWizRefRaw=rawBasin[n];
+  var rawIn=(calWizRefRaw/2.54).toFixed(1);
+  document.getElementById("calwiz-ttl").textContent="Calibration "+(basinNames[n]||"B"+n);
+  document.getElementById("calwiz-reading").textContent="Lecture actuelle\u00a0: "+rawIn+" po (brut)";
+  document.getElementById("calwiz-input").value="";
+  document.getElementById("calwiz-step1").style.display="";
+  document.getElementById("calwiz-step2").style.display="none";
+  document.getElementById("calwizo").className="calwiz-ov show";
+  setTimeout(function(){document.getElementById("calwiz-input").focus()},100);
+}
+function calWizCancel(){document.getElementById("calwizo").className="calwiz-ov"}
+function calWizStep2(){
+  var v=parseFloat(document.getElementById("calwiz-input").value);
+  if(isNaN(v)||v<=0){document.getElementById("calwiz-input").focus();return}
+  calWizRefInches=v;
+  calData[calWizBasin]={refRaw:calWizRefRaw,refInches:calWizRefInches};
+  saveCal();sba(calWizBasin,basinPct[calWizBasin]);updateCalDisplay();
+  var curMax=basinMax[calWizBasin];
+  document.getElementById("calwiz-maxlbl").textContent="Max actuel\u00a0: "+(curMax>0?curMax+" po":"--");
+  document.getElementById("calwiz-maxinput").value=curMax>0?curMax:"";
+  document.getElementById("calwiz-step1").style.display="none";
+  document.getElementById("calwiz-step2").style.display="";
+  setTimeout(function(){document.getElementById("calwiz-maxinput").focus()},100);
+}
+function calWizKeepMax(){document.getElementById("calwizo").className="calwiz-ov"}
+function calWizSaveMax(){
+  var v=parseFloat(document.getElementById("calwiz-maxinput").value);
+  if(isNaN(v)||v<=0){document.getElementById("calwiz-maxinput").focus();return}
+  basinMax[calWizBasin]=v;
+  try{localStorage.setItem("bmax_"+id,JSON.stringify(basinMax))}catch(e){}
+  sba(calWizBasin,basinPct[calWizBasin]);updateCalDisplay();
+  document.getElementById("calwizo").className="calwiz-ov";
+}
+function saveToWROOM(){
+  if(!c||!c.connected){alert("Non connecté au WROOM");return}
+  var p="cyd/"+id+"/";
+  for(var n=1;n<=4;n++){if(calData[n]&&calData[n].refRaw!=null)c.publish(p+"basin"+n+"/cal",JSON.stringify(calData[n]),{retain:true})}
+  c.publish(p+"settings/bmax",JSON.stringify(basinMax),{retain:true});
+  var btn=document.querySelector(".cal-save-btn");
+  btn.textContent="\u2713 Sauvegard\u00e9!";
+  setTimeout(function(){btn.textContent="\uD83D\uDCBE Sauvegarder dans WROOM"},2000);
 }
 function rawToInches(n,currentRaw){
   var cal=calData[n];
@@ -407,7 +421,6 @@ function rawToInches(n,currentRaw){
   return Math.round(cal.refInches+deltaInches);
 }
 function saveCal(){try{localStorage.setItem("cal_"+id,JSON.stringify(calData))}catch(e){}}
-function saveMaxDepth(n){var v=parseFloat(document.getElementById("calMax"+n).value)||0;basinMax[n]=v;try{localStorage.setItem("bmax_"+id,JSON.stringify(basinMax))}catch(e){}if(c&&c.connected)c.publish("cyd/"+id+"/settings/bmax",JSON.stringify(basinMax),{retain:true});sba(n,basinPct[n])}
 function sv(on){vacOn=on;updSlider()}
 function updTH(){document.getElementById("tmp").innerHTML=curTemp+"&deg;C";document.getElementById("hum").textContent=curHum>0?curHum.toFixed(0)+"% humidité":""}
 function sba(n,v){var l=parseInt(v)||0;basinPct[n]=l;var po=rawToInches(n,rawBasin[n]);var pct=l;if(po!==null&&basinMax[n]>0){pct=Math.round(po/basinMax[n]*100);if(pct<0)pct=0;if(pct>100)pct=100}var f=document.getElementById("bf"+n);if(f){f.style.height=pct+"%";f.className="tf "+(pct>=91?"h":pct>=61?"m":"l")}if(basinUnit==="in"){document.getElementById("bp"+n).textContent=po!==null?po+" po":l+"%"}else{document.getElementById("bp"+n).textContent=pct+"%"}}
