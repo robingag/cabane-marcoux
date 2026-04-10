@@ -68,7 +68,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
 <script>
 var id="5ea48c",p="cyd/"+id+"/";
 var rawBasin={1:0,2:0,3:0,4:0},calData={},basinMax={1:42,2:23,3:42,4:34};
-var dmpElapsed=0,dmpTimer=null,dmpWatchdog=null;
+var elWatchdog=null;
 
 setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
@@ -106,22 +106,18 @@ c.on("connect",function(){
   document.getElementById("dot").classList.add("ok");
   ["basin1/raw","basin2/raw","basin3/raw","basin4/raw",
    "basin1/cal","basin2/cal","basin3/cal","basin4/cal",
-   "temp","dompeur","dompeur/live","settings/bmax"].forEach(function(t){c.subscribe(p+t);});
+   "temp","dompeur","dompeur/elapsed","settings/bmax"].forEach(function(t){c.subscribe(p+t);});
 });
 c.on("offline",function(){document.getElementById("dot").classList.remove("ok");});
 c.on("message",function(tp,m){
   var v=m.toString();
   if(tp===p+"temp"){document.getElementById("tmp").textContent=(+v).toFixed(1)+" \u00b0C";}
   if(tp===p+"dompeur"){document.getElementById("dmp").textContent=v;}
-  if(tp===p+"dompeur/live"){
-    var pp=v.split(":");
-    if(pp.length===2){
-      dmpElapsed=parseInt(pp[0])*60+parseInt(pp[1]);
-      document.getElementById("el").textContent=v;
-      if(!dmpTimer)dmpTimer=setInterval(function(){dmpElapsed++;document.getElementById("el").textContent=fmt(dmpElapsed);},1000);
-      if(dmpWatchdog)clearTimeout(dmpWatchdog);
-      dmpWatchdog=setTimeout(function(){clearInterval(dmpTimer);dmpTimer=null;document.getElementById("el").textContent="--:--";},5000);
-    }
+  if(tp===p+"dompeur/elapsed"){
+    var sec=parseInt(v)||0;
+    document.getElementById("el").textContent=fmt(sec);
+    if(elWatchdog)clearTimeout(elWatchdog);
+    elWatchdog=setTimeout(function(){document.getElementById("el").textContent="--:--";},4000);
   }
   if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
   for(var n=1;n<=4;n++){
