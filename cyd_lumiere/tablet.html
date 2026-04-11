@@ -119,7 +119,13 @@ c.on("offline",function(){document.getElementById("dot").classList.remove("ok");
 c.on("message",function(tp,m){
   var v=m.toString();
   if(tp===p+"temp"){document.getElementById("tmp").textContent=(+v).toFixed(1)+" \u00b0C";}
-  if(tp===p+"dompeur"){document.getElementById("dmp").textContent=v;}
+  if(tp===p+"dompeur"){
+    // Compatibilité: ancienne firmware publiait en secondes brutes (ex: "1086.57")
+    // Nouvelle firmware publie en "MM:SS" — on détecte et on convertit si nécessaire
+    var dv=v;
+    if(/^\d+(\.\d+)?$/.test(v.trim())){var ds=Math.round(parseFloat(v));dv=fmt(ds);}
+    document.getElementById("dmp").textContent=dv;
+  }
   if(tp===p+"dompeur/elapsed"){
     var sec=parseInt(v)||0;
     elBase=sec;elAt=Date.now();elAlive=true;
