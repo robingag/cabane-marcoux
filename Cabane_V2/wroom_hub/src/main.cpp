@@ -160,6 +160,24 @@ void addDompeurPoint(int seconds) {
     memmove(dompeurHist, dompeurHist + 1, (GRAPH_MAX - 1) * sizeof(int));
     dompeurHist[GRAPH_MAX - 1] = seconds;
   }
+  // Persister dans NVS (survit aux reboots/flash)
+  prefs.begin("dmp", false);
+  prefs.putInt("cnt", graphCount);
+  prefs.putBytes("hist", dompeurHist, graphCount * sizeof(int));
+  prefs.end();
+}
+
+void publishDompeurHist() {
+  if (!mqtt.connected() || graphCount == 0) return;
+  String json = "[";
+  for (int i = 0; i < graphCount; i++) {
+    if (i > 0) json += ",";
+    json += String(dompeurHist[i]);
+  }
+  json += "]";
+  String topic = "cyd/" + deviceId + "/settings/hist";
+  mqtt.publish(topic.c_str(), json.c_str(), true);
+  Serial.printf("Hist publié: %d cycles\n", graphCount);
 }
 
 // ========== ULTRASON ==========
@@ -389,6 +407,7 @@ void mqttReconnect() {
     mqtt.publish(mqttTopicState.c_str(), vacuumOn ? "1" : "0", true);
     publishGalToday();
     publishGalHist();
+    publishDompeurHist();  // Republier historique 30 cycles au (re)démarrage
   } else {
     Serial.printf("MQTT: échec (rc=%d)\n", mqtt.state());
   }
@@ -421,6 +440,9 @@ void updateDompeurTime(unsigned long ms) {
     snprintf(ncBuf, sizeof(ncBuf), "{\"ts\":%lu,\"dur\":%lu,\"cycle\":%d}",
       millis(), sec, galCycleCount);
     mqtt.publish(mqttTopicDompeurNewCycle.c_str(), ncBuf, false);
+
+    // Historique 30 cycles (retain:true) — dashboard le reçoit même si browser était fermé
+    publishDompeurHist();
 
     // Total gallons d'aujourd'hui (retain:true)
     publishGalToday();
@@ -493,6 +515,15 @@ void setup() {
   galHist       = prefs.getString("hist",  "[]");
   prefs.end();
   Serial.printf("Gallons restaurés: %d gal (%d cycles) le %s\n", galToday, galCycleCount, galDate.c_str());
+
+  // Restaurer l'historique des 30 derniers cycles depuis NVS
+  prefs.begin("dmp", true);
+  graphCount = prefs.getInt("cnt", 0);
+  if (graphCount > 0 && graphCount <= GRAPH_MAX) {
+    prefs.getBytes("hist", dompeurHist, graphCount * sizeof(int));
+    Serial.printf("Hist dompeur restauré: %d cycles\n", graphCount);
+  }
+  prefs.end();
 
   // Device ID (priorité: NVS > code > MAC)
   prefs.begin("mqtt", true);
