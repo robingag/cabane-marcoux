@@ -135,10 +135,10 @@ c.on("message",function(tp,m){
     var sec=parseInt(v)||0;
     lastElMqtt=Date.now();
     document.getElementById("wroom-dot").className="dot ok";
-    if(sec>3600){
-      // Valeur aberrante (WROOM n'a pas reset lsLastEdge) → masquer
+    if(sec>1800){
+      // > 30 min d'inactivité → dompeur en pause, afficher "> 30 min"
       elAlive=false;
-      document.getElementById("el").textContent="--:--";
+      document.getElementById("el").textContent="> 30 min";
     } else {
       elBase=sec;elAt=Date.now();elAlive=true;
       document.getElementById("el").textContent=fmt(sec);
