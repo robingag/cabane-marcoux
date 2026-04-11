@@ -133,9 +133,16 @@ c.on("message",function(tp,m){
   }
   if(tp===p+"dompeur/elapsed"){
     var sec=parseInt(v)||0;
-    elBase=sec;elAt=Date.now();elAlive=true;lastElMqtt=Date.now();
-    document.getElementById("el").textContent=fmt(sec);
+    lastElMqtt=Date.now();
     document.getElementById("wroom-dot").className="dot ok";
+    if(sec>3600){
+      // Valeur aberrante (WROOM n'a pas reset lsLastEdge) → masquer
+      elAlive=false;
+      document.getElementById("el").textContent="--:--";
+    } else {
+      elBase=sec;elAt=Date.now();elAlive=true;
+      document.getElementById("el").textContent=fmt(sec);
+    }
   }
   if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
   for(var n=1;n<=4;n++){
