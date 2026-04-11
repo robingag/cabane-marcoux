@@ -68,9 +68,16 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
 <script>
 var id="5ea48c",p="cyd/"+id+"/";
 var rawBasin={1:0,2:0,3:0,4:0},calData={},basinMax={1:42,2:23,3:42,4:34};
-var elWatchdog=null;
-
-setInterval(function(){var d=new Date();document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");},10000);
+// Elapsed timer — recalé par MQTT, compte localement en autonomie
+var elBase=0,elAt=0,elAlive=false;
+setInterval(function(){
+  var d=new Date();
+  document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  if(elAlive){
+    var s=elBase+Math.floor((Date.now()-elAt)/1000);
+    document.getElementById("el").textContent=fmt(s);
+  }
+},1000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
 
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
@@ -115,9 +122,8 @@ c.on("message",function(tp,m){
   if(tp===p+"dompeur"){document.getElementById("dmp").textContent=v;}
   if(tp===p+"dompeur/elapsed"){
     var sec=parseInt(v)||0;
+    elBase=sec;elAt=Date.now();elAlive=true;
     document.getElementById("el").textContent=fmt(sec);
-    if(elWatchdog)clearTimeout(elWatchdog);
-    elWatchdog=setTimeout(function(){document.getElementById("el").textContent="--:--";},4000);
   }
   if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
   for(var n=1;n<=4;n++){
