@@ -45,12 +45,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
 <body>
 <div class="hdr">
   <h1>&#127809; Cabane Marcoux</h1>
-  <div class="hdr-r"><span id="clk">--:--</span><div class="dot" id="dot"></div></div>
+  <div class="hdr-r"><span style="font-size:10px;color:#64748b;margin-right:4px" id="wroom-lbl">WROOM</span><div class="dot" id="wroom-dot" style="margin-right:8px"></div><span id="clk">--:--</span><div class="dot" id="dot" style="margin-left:8px"></div></div>
 </div>
 <div class="top">
   <div class="card">
-    <div class="card-lbl">Dompeur &mdash; Dernier cycle</div>
+    <div class="card-lbl">Dernier cycle dompeur</div>
     <div class="card-val gold" id="dmp">--:--</div>
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Depuis dernier passage</div>
     <div class="card-sub" id="el">--:--</div>
   </div>
   <div class="card">
@@ -69,13 +70,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#080a0e;color:#c8d4e
 var id="5ea48c",p="cyd/"+id+"/";
 var rawBasin={1:0,2:0,3:0,4:0},calData={},basinMax={1:42,2:23,3:42,4:34};
 // Elapsed timer — recalé par MQTT, compte localement en autonomie
-var elBase=0,elAt=0,elAlive=false;
+var elBase=0,elAt=0,elAlive=false,lastElMqtt=0;
 setInterval(function(){
   var d=new Date();
   document.getElementById("clk").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   if(elAlive){
     var s=elBase+Math.floor((Date.now()-elAt)/1000);
     document.getElementById("el").textContent=fmt(s);
+  }
+  // Watchdog WROOM: si aucun message elapsed reçu depuis +10s → dot rouge
+  if(lastElMqtt>0&&Date.now()-lastElMqtt>10000){
+    document.getElementById("wroom-dot").className="dot";
   }
 },1000);
 document.getElementById("clk").textContent=new Date().toTimeString().slice(0,5);
@@ -128,8 +133,9 @@ c.on("message",function(tp,m){
   }
   if(tp===p+"dompeur/elapsed"){
     var sec=parseInt(v)||0;
-    elBase=sec;elAt=Date.now();elAlive=true;
+    elBase=sec;elAt=Date.now();elAlive=true;lastElMqtt=Date.now();
     document.getElementById("el").textContent=fmt(sec);
+    document.getElementById("wroom-dot").className="dot ok";
   }
   if(tp===p+"settings/bmax"){try{basinMax=JSON.parse(v);}catch(e){}}
   for(var n=1;n<=4;n++){
